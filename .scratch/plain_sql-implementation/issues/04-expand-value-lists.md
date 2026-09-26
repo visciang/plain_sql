@@ -6,12 +6,12 @@
 
 **Blocked by:** 01 (Render bound and spliced Fragments).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `~q"id IN #{list([1, 2, 3])}"` renders `id IN ($1, $2, $3)` with params `[1, 2, 3]` on Postgres, `id IN (?, ?, ?)` on SQLite and MySQL, and `id IN (@1, @2, @3)` on MSSQL.
-- [ ] `list/1` raises `ArgumentError` at the call for `[]`.
-- [ ] `list/1` produces one `{:list, values}` part. The values are unchanged.
-- [ ] A `{:list, values}` part between other Bindings takes the placeholders `n..n+k-1` and the following Binding takes `n+k`.
-- [ ] `~q"id = ANY(#{ids})"` with `ids = [1, 2]` renders one placeholder and params `[[1, 2]]`.
-- [ ] `~q"VALUES #{list(values)}"` renders one row with parentheses included.
-- [ ] The `@doc` of `list/1` states that PlainSQL does not count parameters and the Driver reports its limit.
+- [x] `~q"id IN #{list([1, 2, 3])}"` renders `id IN ($1, $2, $3)` with params `[1, 2, 3]` on Postgres, `id IN (?, ?, ?)` on SQLite and MySQL, and `id IN (@1, @2, @3)` on MSSQL.
+- [x] `list/1` raises `ArgumentError` at the call for `[]`.
+- [x] `list/1` produces one `{:list, values}` part. The values are unchanged.
+- [x] A `{:list, values}` part between other Bindings takes the placeholders `n..n+k-1` and the following Binding takes `n+k`.
+- [x] `~q"id = ANY(#{ids})"` with `ids = [1, 2]` renders one placeholder and params `[[1, 2]]`.
+- [x] `~q"VALUES #{list(values)}"` renders one row with parentheses included.
+- [x] The `@doc` of `list/1` states that PlainSQL does not count parameters and the Driver reports its limit.

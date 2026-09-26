@@ -35,6 +35,26 @@ render(query, PlainSQL.Dialect.SQLite)
 
 A `%PlainSQL.Fragment{}` in `#{}` splices its text and its Bindings at that position. Any other value binds as one placeholder. The sigil never converts a value. The Driver decides the encoding.
 
+## Composition
+
+`all/1`, `any/1`, and `where/1` compose optional predicates. `all/1` and `any/1` skip `nil`, `false`, and the Empty Fragment. `where/1` renders nothing for the Empty Fragment.
+
+```elixir
+conds = all([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
+render(~q"SELECT * FROM orders #{where(conds)}", PlainSQL.Dialect.Postgres)
+#=> {"SELECT * FROM orders WHERE (status = $1) AND (id IN ($2, $3))", ["open", 1, 2]}
+```
+
+`identifier/1` quotes a name for the Dialect. `join/2` places a separator between Fragments. `list/1` renders one placeholder per element inside parentheses.
+
+```elixir
+cols = join(Enum.map(names, &identifier/1), ~q", ")
+render(~q"INSERT INTO #{identifier(table)} (#{cols}) VALUES #{list(values)}", PlainSQL.Dialect.MySQL)
+#=> {"INSERT INTO `orders` (`id`, `status`) VALUES (?, ?)", [1, "open"]}
+```
+
+`raw/1` splices SQL text known at runtime. The text renders verbatim. Never pass text derived from user input.
+
 ## Portability
 
 > PlainSQL renders one Fragment for one Dialect at a time. A Dialect decides the placeholder style and the identifier quoting. A Dialect does not change the SQL text. PlainSQL does not check that the SQL text is valid for the target database. The developer owns the SQL text.

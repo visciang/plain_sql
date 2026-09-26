@@ -49,6 +49,135 @@ defmodule PlainSQL do
   def __part__(value), do: [{:binding, value}]
 
   @doc """
+  Builds a Fragment with one Identifier.
+
+  Rendering always quotes `name` with the delimiter pair of the Dialect. On Postgres
+  `identifier("Users")` renders `"Users"`, which names a different table from unquoted
+  `Users`. There is no composite form. Write
+  `~q"\#{identifier("public")}.\#{identifier("users")}"` for a qualified name.
+
+  Raises `ArgumentError` for a non-binary and for `""`. `PlainSQL.render/2` raises
+  `ArgumentError` when `name` contains a delimiter of the Dialect.
+  """
+  @spec identifier(String.t()) :: Fragment.t()
+  def identifier(name) when is_binary(name) and name != "" do
+    %Fragment{parts: [{:identifier, name}]}
+  end
+
+  def identifier(other) do
+    raise ArgumentError, "identifier/1 expects a non-empty binary, got: #{inspect(other)}"
+  end
+
+  @doc """
+  Builds a Fragment from SQL text known at runtime.
+
+  The text renders verbatim. Never pass text derived from user input.
+
+  `raw("")` is the Empty Fragment. Raises `ArgumentError` for a non-binary.
+  """
+  @spec raw(String.t()) :: Fragment.t()
+  def raw(""), do: %Fragment{parts: []}
+  def raw(text) when is_binary(text), do: %Fragment{parts: [{:text, text}]}
+
+  def raw(other) do
+    raise ArgumentError, "raw/1 expects a binary, got: #{inspect(other)}"
+  end
+
+  @doc """
+  Builds a Fragment with one placeholder per element of `values`.
+
+  Rendering emits `(p1, p2, ..., pn)`. The text works after `IN` and after `NOT IN` and
+  as a `VALUES` row. A bare list in `\#{}` binds as one value instead.
+
+  PlainSQL does not count parameters. The Driver reports its parameter limit.
+
+  Raises `ArgumentError` for an empty list. `IN ()` is invalid SQL on every Dialect.
+  """
+  @spec list([term(), ...]) :: Fragment.t()
+  def list([_ | _] = values), do: %Fragment{parts: [{:list, values}]}
+
+  def list(other) do
+    raise ArgumentError, "list/1 expects a non-empty list, got: #{inspect(other)}"
+  end
+
+  @doc """
+  Joins `fragments` with `separator` between them.
+
+  Skips members that are `nil`, `false`, or the Empty Fragment. Renders the Empty
+  Fragment when no member remains.
+
+  Raises `ArgumentError` for a member that is not a Fragment, `nil`, or `false`.
+  """
+  @spec join([Fragment.t() | nil | false], Fragment.t()) :: Fragment.t()
+  def join(fragments, %Fragment{parts: separator}) when is_list(fragments) do
+    parts =
+      fragments
+      |> Enum.flat_map(&member_parts/1)
+      |> Enum.intersperse(separator)
+      |> List.flatten()
+
+    %Fragment{parts: parts}
+  end
+
+  defp member_parts(nil), do: []
+  defp member_parts(false), do: []
+  defp member_parts(%Fragment{parts: []}), do: []
+  defp member_parts(%Fragment{parts: parts}), do: [parts]
+
+  defp member_parts(other) do
+    raise ArgumentError,
+          "join/2 expects a Fragment, nil, or false for each member, got: #{inspect(other)}"
+  end
+
+  @doc """
+  Joins the predicates in `fragments` with ` AND `.
+
+  Wraps every member in parentheses, also a single member. Skips members that are `nil`,
+  `false`, or the Empty Fragment. Renders the Empty Fragment when no member remains.
+
+  Raises `ArgumentError` for a member that is not a Fragment, `nil`, or `false`.
+  """
+  @spec all([Fragment.t() | nil | false]) :: Fragment.t()
+  def all(fragments) when is_list(fragments) do
+    fragments
+    |> Enum.map(&parenthesize/1)
+    |> join(%Fragment{parts: [{:text, " AND "}]})
+  end
+
+  @doc """
+  Joins the predicates in `fragments` with ` OR `.
+
+  Wraps every member in parentheses, also a single member. Skips members that are `nil`,
+  `false`, or the Empty Fragment.
+
+  Raises `ArgumentError` when no member remains. The identity of `OR` is `FALSE` and no
+  portable literal for it exists. Raises `ArgumentError` for a member that is not a
+  Fragment, `nil`, or `false`.
+  """
+  @spec any([Fragment.t() | nil | false]) :: Fragment.t()
+  def any(fragments) when is_list(fragments) do
+    case Enum.map(fragments, &parenthesize/1) |> join(%Fragment{parts: [{:text, " OR "}]}) do
+      %Fragment{parts: []} -> raise ArgumentError, "any/1 needs at least one predicate"
+      fragment -> fragment
+    end
+  end
+
+  defp parenthesize(%Fragment{parts: [_ | _] = parts}) do
+    %Fragment{parts: [{:text, "("} | parts] ++ [{:text, ")"}]}
+  end
+
+  defp parenthesize(other), do: other
+
+  @doc """
+  Renders `WHERE ` followed by `fragment`.
+
+  Renders the Empty Fragment when `fragment` is the Empty Fragment.
+  """
+  @spec where(Fragment.t()) :: Fragment.t()
+  def where(%Fragment{parts: []} = empty), do: empty
+  def where(%Fragment{parts: parts}), do: %Fragment{parts: [{:text, "WHERE "} | parts]}
+
+  @doc """
   Renders `fragment` for `dialect`.
 
   Returns the SQL string and the params in text order. `dialect` is a module that
