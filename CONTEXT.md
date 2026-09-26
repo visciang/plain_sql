@@ -20,6 +20,14 @@ _Avoid_: Embedding, nesting, concatenation
 A Fragment with no text and no bindings. Splicing it changes nothing. It is the value of an optional clause that is absent.
 _Avoid_: Nil fragment, blank, no-op
 
+**Identifier**:
+A table, column, or schema name placed inside a Fragment so that the Dialect quotes it. An Identifier is not a Binding.
+_Avoid_: Quoted name, escaped name
+
+**Raw Text**:
+SQL text placed inside a Fragment at runtime. Rendering emits it verbatim.
+_Avoid_: Unsafe, literal, inline SQL
+
 **Dialect**:
 The rendering rules for one SQL variant. A Dialect decides how bindings and identifiers appear in the rendered text. A Dialect does not change what the SQL says.
 _Avoid_: Adapter, backend, flavour
