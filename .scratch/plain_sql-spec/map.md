@@ -31,6 +31,7 @@ A design spec for `plain_sql`, an Elixir library that lets a developer write SQL
 - [Composition model: Splicing semantics and clause helpers](issues/02-composition-model.md): a Fragment is a parts list numbered at Rendering; Splicing is verbatim list concatenation; helpers `all/1`, `any/1`, `where/1`, `list/1`; a helper never reads the text around it.
 - [Sigil name and the Binding rule for `#{}`](issues/03-sigil-and-binding-rule.md): `~q`; a `%PlainSQL.Fragment{}` in `#{}` splices and any other value binds, decided at runtime by struct match; no modifiers in v1; sigil text is verbatim; the Empty Fragment is `parts: []`.
 - [Portability statement and the closed divergence list](issues/04-portability-statement.md): a Dialect decides two things, the placeholder text for position N and the identifier delimiter pair; `{:list, values}` renders `(p1, ..., pn)` on every Dialect; Rendering never inspects a value, the Driver raises; an embedded delimiter in an identifier raises `ArgumentError`; SQLite uses `?`; README statement text fixed.
+- [Dialect contract and Rendering output](issues/05-dialect-contract.md): `@behaviour PlainSQL.Dialect` with `placeholder/1` and `identifier_delimiters/0`; four modules ship under `PlainSQL.Dialect.*` (Postgres, SQLite, MySQL, MSSQL); `PlainSQL.render/2` returns `{sql :: String.t(), params :: list}` and raises; the Dialect module is explicit on every call, no defaults, no atoms; helpers and `render/2` live in `PlainSQL`.
 
 ## Not yet specified
 
@@ -38,7 +39,7 @@ A design spec for `plain_sql`, an Elixir library that lets a developer write SQL
 - Test strategy for Rendering per Dialect (golden files, property tests over Splicing).
 - Ecto interop: a Fragment inside `Repo.query/2`, and whether an Ecto `fragment/1` bridge is wanted.
 - Error surface: the exception module and message text for each error PlainSQL raises. Two cases are settled by [Portability statement](issues/04-portability-statement.md). Ticket 08 covers the sigil at compile time.
-- Packaging: one hex package or core plus Dialect packages.
+- Packaging: the four Dialect modules are in the core package ([Dialect contract](issues/05-dialect-contract.md)). Open: whether an Ecto bridge, if ticket 07 wants one, is a separate package.
 
 ## Out of scope
 
