@@ -106,13 +106,15 @@ defmodule PlainSQL do
   Skips members that are `nil`, `false`, or the Empty Fragment. Renders the Empty
   Fragment when no member remains.
 
-  Raises `ArgumentError` for a member that is not a Fragment, `nil`, or `false`. Raises
-  `ArgumentError` for a separator that is not a Fragment.
+  Raises `ArgumentError` for a `fragments` that is not a list. Raises `ArgumentError` for
+  a member that is not a Fragment, `nil`, or `false`. Raises `ArgumentError` for a
+  separator that is not a Fragment.
   """
   @spec join([Fragment.t() | nil | false], Fragment.t()) :: Fragment.t()
-  def join(fragments, %Fragment{parts: separator}) when is_list(fragments) do
+  def join(fragments, %Fragment{parts: separator}) do
     parts =
       fragments
+      |> members()
       |> Enum.flat_map(&member_parts/1)
       |> Enum.intersperse(separator)
       |> List.flatten()
@@ -120,8 +122,14 @@ defmodule PlainSQL do
     %Fragment{parts: parts}
   end
 
-  def join(fragments, separator) when is_list(fragments) do
+  def join(_fragments, separator) do
     raise ArgumentError, "join/2 expects a Fragment separator, got: #{inspect(separator)}"
+  end
+
+  defp members(fragments) when is_list(fragments), do: fragments
+
+  defp members(other) do
+    raise ArgumentError, "expected a list of Fragments, got: #{inspect(other)}"
   end
 
   defp member_parts(nil), do: []
@@ -139,10 +147,11 @@ defmodule PlainSQL do
   Wraps every member in parentheses, also a single member. Skips members that are `nil`,
   `false`, or the Empty Fragment. Renders the Empty Fragment when no member remains.
 
-  Raises `ArgumentError` for a member that is not a Fragment, `nil`, or `false`.
+  Raises `ArgumentError` for a `fragments` that is not a list and for a member that is not
+  a Fragment, `nil`, or `false`.
   """
   @spec all([Fragment.t() | nil | false]) :: Fragment.t()
-  def all(fragments) when is_list(fragments), do: join_predicates(fragments, " AND ")
+  def all(fragments), do: join_predicates(fragments, " AND ")
 
   @doc """
   Joins the predicates in `fragments` with ` OR `.
@@ -151,11 +160,11 @@ defmodule PlainSQL do
   `false`, or the Empty Fragment.
 
   Raises `ArgumentError` when no member remains. The identity of `OR` is `FALSE`. No
-  portable literal for `FALSE` exists. Raises `ArgumentError` for a member that is not a
-  Fragment, `nil`, or `false`.
+  portable literal for `FALSE` exists. Raises `ArgumentError` for a `fragments` that is
+  not a list and for a member that is not a Fragment, `nil`, or `false`.
   """
   @spec any([Fragment.t() | nil | false]) :: Fragment.t()
-  def any(fragments) when is_list(fragments) do
+  def any(fragments) do
     case join_predicates(fragments, " OR ") do
       %Fragment{parts: []} -> raise ArgumentError, "any/1 needs at least one predicate"
       fragment -> fragment
@@ -164,6 +173,7 @@ defmodule PlainSQL do
 
   defp join_predicates(fragments, separator) do
     fragments
+    |> members()
     |> Enum.map(&parenthesize/1)
     |> join(%Fragment{parts: [{:text, separator}]})
   end
@@ -200,10 +210,11 @@ defmodule PlainSQL do
   Skips members that are `nil`, `false`, or the Empty Fragment. Renders the Empty
   Fragment when no member remains. No parentheses around a member.
 
-  Raises `ArgumentError` for a member that is not a Fragment, `nil`, or `false`.
+  Raises `ArgumentError` for a `fragments` that is not a list and for a member that is not
+  a Fragment, `nil`, or `false`.
   """
   @spec group_by([Fragment.t() | nil | false]) :: Fragment.t()
-  def group_by(fragments) when is_list(fragments), do: clause("GROUP BY ", comma_list(fragments))
+  def group_by(fragments), do: clause("GROUP BY ", comma_list(fragments))
 
   @doc """
   Renders `ORDER BY ` followed by the members of `fragments` joined with `, `.
@@ -211,10 +222,11 @@ defmodule PlainSQL do
   Skips members that are `nil`, `false`, or the Empty Fragment. Renders the Empty
   Fragment when no member remains. No parentheses around a member.
 
-  Raises `ArgumentError` for a member that is not a Fragment, `nil`, or `false`.
+  Raises `ArgumentError` for a `fragments` that is not a list and for a member that is not
+  a Fragment, `nil`, or `false`.
   """
   @spec order_by([Fragment.t() | nil | false]) :: Fragment.t()
-  def order_by(fragments) when is_list(fragments), do: clause("ORDER BY ", comma_list(fragments))
+  def order_by(fragments), do: clause("ORDER BY ", comma_list(fragments))
 
   @doc """
   Renders `SET ` followed by the members of `fragments` joined with `, `.
@@ -223,11 +235,11 @@ defmodule PlainSQL do
   member. Takes Fragments, not a map.
 
   Raises `ArgumentError` when no member remains. `UPDATE` without `SET` is invalid SQL on
-  every Dialect. Raises `ArgumentError` for a member that is not a Fragment, `nil`, or
-  `false`.
+  every Dialect. Raises `ArgumentError` for a `fragments` that is not a list and for a
+  member that is not a Fragment, `nil`, or `false`.
   """
   @spec set([Fragment.t() | nil | false]) :: Fragment.t()
-  def set(fragments) when is_list(fragments) do
+  def set(fragments) do
     case comma_list(fragments) do
       %Fragment{parts: []} -> raise ArgumentError, "set/1 needs at least one assignment"
       members -> clause("SET ", members)

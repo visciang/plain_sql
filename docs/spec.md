@@ -85,7 +85,7 @@ Boundary rule: a helper takes Fragments or values, emits text at its own Splicin
 
 Skip rule: a helper argument that is `nil`, `false`, or the Empty Fragment is absent. A list helper (`join/2`, `all/1`, `any/1`, `group_by/1`, `order_by/1`, `set/1`) skips an absent member. A unary helper (`where/1`, `having/1`) treats an absent argument as the Empty Fragment. `empty?/1` returns `true` for an absent argument.
 
-Argument rule: every helper raises `ArgumentError` at the call for an argument or a member that is not a Fragment, `nil`, or `false`.
+Argument rule: every helper raises `ArgumentError` at the call for an argument or a member that is not a Fragment, `nil`, or `false`. A list helper raises `ArgumentError` at the call for a `fragments` argument that is not a list.
 
 `empty?(fragment)`
 
@@ -214,6 +214,7 @@ Every error PlainSQL raises is an `ArgumentError`. Message text is not fixed by 
 | `identifier/1` with a non-binary or `""` | call |
 | `raw/1` with a non-binary | call |
 | Helper argument or member that is not a Fragment, `nil`, or `false` | call |
+| List helper `fragments` argument that is not a list | call |
 | Identifier name contains a delimiter of the Dialect | `render/2` |
 | `dialect/1` cannot infer a Dialect | `dialect/1`, `query/3` |
 

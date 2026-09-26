@@ -94,6 +94,10 @@ defmodule PlainSQL.HelpersTest do
     test "raises ArgumentError for a separator that is not a Fragment" do
       assert_raise ArgumentError, fn -> apply(PlainSQL, :join, [[~q"a"], ", "]) end
     end
+
+    test "raises ArgumentError for a fragments argument that is not a list" do
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :join, [~q"a", ~q", "]) end
+    end
   end
 
   describe "list/1" do
@@ -159,6 +163,10 @@ defmodule PlainSQL.HelpersTest do
     test "raises ArgumentError for a member that is not a Fragment, nil, or false" do
       assert_raise ArgumentError, fn -> all([~q"a", "b"]) end
     end
+
+    test "raises ArgumentError for a fragments argument that is not a list" do
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :all, [~q"a"]) end
+    end
   end
 
   describe "any/1" do
@@ -182,6 +190,10 @@ defmodule PlainSQL.HelpersTest do
 
     test "raises ArgumentError for a member that is not a Fragment, nil, or false" do
       assert_raise ArgumentError, fn -> any([~q"a", "b"]) end
+    end
+
+    test "raises ArgumentError for a fragments argument that is not a list" do
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :any, [:a]) end
     end
 
     test "nested all/any numbers Bindings in text order" do
@@ -269,6 +281,10 @@ defmodule PlainSQL.HelpersTest do
     test "raises ArgumentError for a member that is not a Fragment, nil, or false" do
       assert_raise ArgumentError, fn -> group_by([~q"a", "b"]) end
     end
+
+    test "raises ArgumentError for a fragments argument that is not a list" do
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :group_by, [~q"a"]) end
+    end
   end
 
   describe "order_by/1" do
@@ -282,6 +298,10 @@ defmodule PlainSQL.HelpersTest do
 
     test "raises ArgumentError for a member that is not a Fragment, nil, or false" do
       assert_raise ArgumentError, fn -> order_by([true]) end
+    end
+
+    test "raises ArgumentError for a fragments argument that is not a list" do
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :order_by, [1]) end
     end
   end
 
@@ -298,6 +318,10 @@ defmodule PlainSQL.HelpersTest do
 
     test "raises ArgumentError for a member that is not a Fragment, nil, or false" do
       assert_raise ArgumentError, fn -> set([~q"a = 1", "b = 2"]) end
+    end
+
+    test "raises ArgumentError for a fragments argument that is not a list" do
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :set, [%{a: 1}]) end
     end
 
     test "the UPDATE idiom renders on Postgres" do
