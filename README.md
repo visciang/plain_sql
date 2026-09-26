@@ -67,6 +67,8 @@ render(~q"SELECT * FROM orders #{where(conds)}", PlainSQL.Dialect.Postgres)
 #=> {"SELECT * FROM orders WHERE (status = $1) AND (id IN ($2, $3))", ["open", 1, 2]}
 ```
 
+`list([])` raises `ArgumentError`. `IN ()` is invalid SQL on every Dialect. An empty list has two possible meanings. The guard `ids != [] && ...` states "an empty list is no filter". The predicate `ids == [] && ~q"1 = 0"` states "an empty list matches no row". PlainSQL does not pick one. The developer writes the meaning.
+
 `group_by/1`, `order_by/1`, and `set/1` take a list. They skip absent members and join the rest with `, `. `set/1` raises `ArgumentError` when no member remains. `empty?/1` returns `true` for an absent value.
 
 ```elixir
