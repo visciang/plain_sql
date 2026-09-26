@@ -90,6 +90,10 @@ defmodule PlainSQL.HelpersTest do
       assert_raise ArgumentError, fn -> join([~q"a", "b"], ~q", ") end
       assert_raise ArgumentError, fn -> join([true], ~q", ") end
     end
+
+    test "raises ArgumentError for a separator that is not a Fragment" do
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :join, [[~q"a"], ", "]) end
+    end
   end
 
   describe "list/1" do
@@ -123,6 +127,13 @@ defmodule PlainSQL.HelpersTest do
 
     test "renders a VALUES row with parentheses included" do
       assert render(~q"VALUES #{list(["a", "b"])}", Postgres) == {"VALUES ($1, $2)", ["a", "b"]}
+    end
+
+    test "the multi-row VALUES idiom is join/2 over one list/1 per row" do
+      rows = [[1, "open"], [2, "closed"]]
+      fragment = ~q"VALUES #{join(Enum.map(rows, &list/1), ~q", ")}"
+
+      assert render(fragment, Postgres) == {"VALUES ($1, $2), ($3, $4)", [1, "open", 2, "closed"]}
     end
   end
 
@@ -189,6 +200,17 @@ defmodule PlainSQL.HelpersTest do
       assert where(~q"") == @empty
     end
 
+    test "renders the Empty Fragment for nil and false" do
+      assert where(nil) == @empty
+      assert where(false) == @empty
+    end
+
+    test "raises ArgumentError for an argument that is not a Fragment, nil, or false" do
+      # apply/3 hides the argument from the compile-time type check.
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :where, [1]) end
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :where, ["a = 1"]) end
+    end
+
     test "the conds idiom renders with and without the WHERE clause" do
       query = fn status, ids ->
         conds = all([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
@@ -206,10 +228,129 @@ defmodule PlainSQL.HelpersTest do
                {"SELECT * FROM orders ", []}
     end
 
-    test "no other clause helper exists" do
-      for name <- [:having, :set, :order_by, :group_by] do
+    test "no limit, offset, returning, or negation helper exists" do
+      for name <- [:limit, :offset, :returning, :negate, :prefix, :optional] do
         refute function_exported?(PlainSQL, name, 1)
+        refute function_exported?(PlainSQL, name, 2)
       end
+    end
+  end
+
+  describe "having/1" do
+    test "renders HAVING followed by the Fragment" do
+      assert render(having(~q"count(*) > #{1}"), Postgres) == {"HAVING count(*) > $1", [1]}
+    end
+
+    test "renders the Empty Fragment for the Empty Fragment, nil, and false" do
+      assert having(~q"") == @empty
+      assert having(nil) == @empty
+      assert having(false) == @empty
+    end
+
+    test "raises ArgumentError for an argument that is not a Fragment, nil, or false" do
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :having, [1]) end
+    end
+  end
+
+  describe "group_by/1" do
+    test "renders GROUP BY followed by the members joined with a comma" do
+      assert render(group_by([~q"a", ~q"b"]), Postgres) == {"GROUP BY a, b", []}
+    end
+
+    test "skips nil, false, and the Empty Fragment" do
+      assert render(group_by([nil, ~q"a", false, ~q"", ~q"b"]), Postgres) == {"GROUP BY a, b", []}
+    end
+
+    test "renders the Empty Fragment when no member remains" do
+      assert group_by([]) == @empty
+      assert group_by([nil, false, ~q""]) == @empty
+    end
+
+    test "raises ArgumentError for a member that is not a Fragment, nil, or false" do
+      assert_raise ArgumentError, fn -> group_by([~q"a", "b"]) end
+    end
+  end
+
+  describe "order_by/1" do
+    test "renders ORDER BY followed by the members joined with a comma" do
+      assert render(order_by([~q"a DESC", false, ~q"b"]), Postgres) == {"ORDER BY a DESC, b", []}
+    end
+
+    test "renders the Empty Fragment when no member remains" do
+      assert order_by([nil]) == @empty
+    end
+
+    test "raises ArgumentError for a member that is not a Fragment, nil, or false" do
+      assert_raise ArgumentError, fn -> order_by([true]) end
+    end
+  end
+
+  describe "set/1" do
+    test "renders SET followed by the members joined with a comma, Bindings in text order" do
+      assert render(set([~q"a = #{1}", nil, ~q"b = #{2}"]), Postgres) ==
+               {"SET a = $1, b = $2", [1, 2]}
+    end
+
+    test "raises ArgumentError when no member remains" do
+      assert_raise ArgumentError, fn -> set([]) end
+      assert_raise ArgumentError, fn -> set([nil, false, ~q""]) end
+    end
+
+    test "raises ArgumentError for a member that is not a Fragment, nil, or false" do
+      assert_raise ArgumentError, fn -> set([~q"a = 1", "b = 2"]) end
+    end
+
+    test "the UPDATE idiom renders on Postgres" do
+      update = fn status, note, id ->
+        fragment =
+          ~q"UPDATE orders #{set([~q"status = #{status}", note && ~q"note = #{note}"])} WHERE id = #{id}"
+
+        render(fragment, Postgres)
+      end
+
+      assert update.("open", "rush", 7) ==
+               {"UPDATE orders SET status = $1, note = $2 WHERE id = $3", ["open", "rush", 7]}
+
+      assert update.("open", nil, 7) ==
+               {"UPDATE orders SET status = $1 WHERE id = $2", ["open", 7]}
+    end
+  end
+
+  describe "SELECT clause idiom" do
+    test "renders with and without the optional clauses" do
+      query = fn ids, by_name ->
+        fragment =
+          ~q"SELECT status, count(*) FROM orders #{where(ids != [] && ~q"id IN #{list(ids)}")} #{group_by([~q"status"])} #{having(by_name && ~q"count(*) > #{1}")} #{order_by([~q"status", by_name && ~q"count(*) DESC"])}"
+
+        render(fragment, Postgres)
+      end
+
+      assert query.([1, 2], true) ==
+               {"SELECT status, count(*) FROM orders WHERE id IN ($1, $2) GROUP BY status HAVING count(*) > $3 ORDER BY status, count(*) DESC",
+                [1, 2, 1]}
+
+      assert query.([], false) ==
+               {"SELECT status, count(*) FROM orders  GROUP BY status  ORDER BY status", []}
+    end
+  end
+
+  describe "empty?/1" do
+    test "is true for the Empty Fragment, nil, and false" do
+      assert empty?(~q"")
+      assert empty?(raw(""))
+      assert empty?(all([]))
+      assert empty?(nil)
+      assert empty?(false)
+    end
+
+    test "is false for a Fragment with a part" do
+      refute empty?(~q"a")
+      refute empty?(~q"#{1}")
+    end
+
+    test "raises ArgumentError for an argument that is not a Fragment, nil, or false" do
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :empty?, [1]) end
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :empty?, [""]) end
     end
   end
 

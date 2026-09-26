@@ -83,15 +83,20 @@ Modifiers: none in v1. See section 4.
 
 Boundary rule: a helper takes Fragments or values, emits text at its own Splicing position, and never reads the text around it.
 
-Skip rule: `all/1`, `any/1`, and `join/2` skip members that are `nil`, `false`, or the Empty Fragment.
+Skip rule: a helper argument that is `nil`, `false`, or the Empty Fragment is absent. A list helper (`join/2`, `all/1`, `any/1`, `group_by/1`, `order_by/1`, `set/1`) skips an absent member. A unary helper (`where/1`, `having/1`) treats an absent argument as the Empty Fragment. `empty?/1` returns `true` for an absent argument.
+
+Argument rule: every helper raises `ArgumentError` at the call for an argument or a member that is not a Fragment, `nil`, or `false`.
+
+`empty?(fragment)`
+
+- Returns `true` for the Empty Fragment, `nil`, and `false`. Returns `false` for every other Fragment.
 
 `join(fragments, separator)`
 
-- Takes a list of Fragments and a separator Fragment.
+- Takes a list of Fragments and a separator Fragment. Raises `ArgumentError` at the call for a separator that is not a Fragment.
 - Renders the remaining members in order with the separator between them.
 - Renders the Empty Fragment when no member remains.
-- Raises `ArgumentError` at the call for a member that is not a Fragment, `nil`, or `false`.
-- `join/2` is the primitive under `all/1` and `any/1`.
+- `join/2` is the primitive under `all/1`, `any/1`, `group_by/1`, `order_by/1`, and `set/1`.
 
 `all(fragments)`
 
@@ -106,8 +111,30 @@ Skip rule: `all/1`, `any/1`, and `join/2` skip members that are `nil`, `false`, 
 `where(fragment)`
 
 - Takes one Fragment. Renders `WHERE ` followed by the Fragment.
-- Renders the Empty Fragment when the argument is the Empty Fragment.
-- No `having/1`, `set/1`, `order_by/1`, or `group_by/1` in v1.
+- Renders the Empty Fragment when the argument is absent.
+
+`having(fragment)`
+
+- Same as `where/1` with `HAVING `.
+
+`group_by(fragments)`
+
+- Takes a list of Fragments. Renders `GROUP BY ` followed by the remaining members joined with `, `. No parentheses around a member.
+- Renders the Empty Fragment when no member remains.
+
+`order_by(fragments)`
+
+- Same as `group_by/1` with `ORDER BY `.
+
+`set(fragments)`
+
+- Same as `group_by/1` with `SET `.
+- Raises `ArgumentError` when no member remains. `UPDATE` without `SET` is invalid SQL on every Dialect.
+- Takes Fragments, not a map. Section 6 keeps the `UPDATE SET` builder from a map out of scope.
+
+No `limit/1`, `offset/1`, or `returning/1`. `LIMIT` and `OFFSET` are not portable to MSSQL. `RETURNING` is not portable to MySQL and MSSQL. The developer writes them as `~q` text.
+
+No negation helper. The developer writes `~q"NOT (#{pred})"`.
 
 `list(values)`
 
@@ -140,6 +167,14 @@ conds = all([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
 
 cols = join(Enum.map(names, &identifier/1), ~q", ")
 ~q"INSERT INTO #{identifier(table)} (#{cols}) VALUES #{list(values)}"
+
+rows = join(Enum.map(values_per_row, &list/1), ~q", ")
+~q"INSERT INTO t (a, b) VALUES #{rows}"
+
+order = order_by([~q"created_at DESC", by_name && ~q"name"])
+~q"SELECT * FROM orders #{where(ids != [] && ~q"id IN #{list(ids)}")} #{order}"
+
+~q"UPDATE orders #{set([~q"status = #{status}", note && ~q"note = #{note}"])} WHERE id = #{id}"
 ```
 
 ### 2.5 Rendering
@@ -174,11 +209,11 @@ Every error PlainSQL raises is an `ArgumentError`. Message text is not fixed by 
 |---|---|
 | Any modifier on `~q` | compile time |
 | Empty `#{}` in `~q` | compile time |
-| `any/1` with no remaining member | call |
+| `any/1` or `set/1` with no remaining member | call |
 | `list/1` with an empty list | call |
 | `identifier/1` with a non-binary or `""` | call |
 | `raw/1` with a non-binary | call |
-| `join/2` member that is not a Fragment, `nil`, or `false` | call |
+| Helper argument or member that is not a Fragment, `nil`, or `false` | call |
 | Identifier name contains a delimiter of the Dialect | `render/2` |
 | `dialect/1` cannot infer a Dialect | `dialect/1`, `query/3` |
 
@@ -321,6 +356,7 @@ These items are not fixed by this spec. The implementation effort decides them.
 | `PlainSQL.sigil_q/2` | [03](../.scratch/plain_sql-spec/issues/03-sigil-and-binding-rule.md), [08](../.scratch/plain_sql-spec/issues/08-compile-time-checks.md) |
 | `PlainSQL.Fragment` struct and `part` type | [02](../.scratch/plain_sql-spec/issues/02-composition-model.md), [05](../.scratch/plain_sql-spec/issues/05-dialect-contract.md), [09](../.scratch/plain_sql-spec/issues/09-identifier-and-raw.md) |
 | `PlainSQL.all/1`, `any/1`, `where/1`, `list/1` | [02](../.scratch/plain_sql-spec/issues/02-composition-model.md) |
+| `PlainSQL.empty?/1`, `having/1`, `group_by/1`, `order_by/1`, `set/1`, skip rule on unary helpers | grilling 2026-09-26, [implementation ticket 08](../.scratch/plain_sql-implementation/issues/08-compose-optional-clauses.md) |
 | `PlainSQL.join/2`, `identifier/1`, `raw/1` | [09](../.scratch/plain_sql-spec/issues/09-identifier-and-raw.md) |
 | `PlainSQL.render/2` | [05](../.scratch/plain_sql-spec/issues/05-dialect-contract.md) |
 | `PlainSQL.Dialect` behaviour and the four modules | [04](../.scratch/plain_sql-spec/issues/04-portability-statement.md), [05](../.scratch/plain_sql-spec/issues/05-dialect-contract.md) |

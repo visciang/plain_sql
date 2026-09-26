@@ -37,7 +37,7 @@ A `%PlainSQL.Fragment{}` in `#{}` splices its text and its Bindings at that posi
 
 ## Composition
 
-`all/1`, `any/1`, and `where/1` compose optional predicates. `all/1` and `any/1` skip `nil`, `false`, and the Empty Fragment. `where/1` renders nothing for the Empty Fragment.
+`all/1` and `any/1` compose optional predicates. `where/1` and `having/1` add the clause keyword. Every helper treats `nil`, `false`, and the Empty Fragment as absent. `all/1` and `any/1` skip an absent member. `where/1` and `having/1` render nothing for an absent argument.
 
 ```elixir
 status = "open"
@@ -47,6 +47,26 @@ conds = all([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
 render(~q"SELECT * FROM orders #{where(conds)}", PlainSQL.Dialect.Postgres)
 #=> {"SELECT * FROM orders WHERE (status = $1) AND (id IN ($2, $3))", ["open", 1, 2]}
 ```
+
+`group_by/1`, `order_by/1`, and `set/1` take a list. They skip absent members and join the rest with `, `. `set/1` raises `ArgumentError` when no member remains. `empty?/1` returns `true` for an absent value.
+
+```elixir
+min = 2
+by_name = true
+note = nil
+
+group = group_by([~q"status"])
+filter = having(min && ~q"count(*) > #{min}")
+order = order_by([~q"status", by_name && ~q"count(*) DESC"])
+render(~q"SELECT status, count(*) FROM orders #{group} #{filter} #{order}", PlainSQL.Dialect.Postgres)
+#=> {"SELECT status, count(*) FROM orders GROUP BY status HAVING count(*) > $1 ORDER BY status, count(*) DESC", [2]}
+
+assignments = set([~q"status = #{status}", note && ~q"note = #{note}"])
+render(~q"UPDATE orders #{assignments} WHERE id = #{7}", PlainSQL.Dialect.Postgres)
+#=> {"UPDATE orders SET status = $1 WHERE id = $2", ["open", 7]}
+```
+
+There is no `limit/1`, `offset/1`, `returning/1`, or negation helper. Write them as text: `~q"LIMIT #{10}"`, `~q"NOT (#{pred})"`.
 
 `identifier/1` quotes a name for the Dialect. `join/2` places a separator between Fragments. `list/1` renders one placeholder per element inside parentheses.
 
@@ -58,6 +78,15 @@ values = [1, "open"]
 cols = join(Enum.map(names, &identifier/1), ~q", ")
 render(~q"INSERT INTO #{identifier(table)} (#{cols}) VALUES #{list(values)}", PlainSQL.Dialect.MySQL)
 #=> {"INSERT INTO `orders` (`id`, `status`) VALUES (?, ?)", [1, "open"]}
+```
+
+A multi-row `VALUES` is `join/2` over one `list/1` per row:
+
+```elixir
+rows = [[1, "open"], [2, "closed"]]
+
+render(~q"INSERT INTO orders (id, status) VALUES #{join(Enum.map(rows, &list/1), ~q", ")}", PlainSQL.Dialect.Postgres)
+#=> {"INSERT INTO orders (id, status) VALUES ($1, $2), ($3, $4)", [1, "open", 2, "closed"]}
 ```
 
 `raw/1` splices SQL text known at runtime. The text renders verbatim. Never pass text derived from user input.

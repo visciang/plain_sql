@@ -106,7 +106,8 @@ defmodule PlainSQL do
   Skips members that are `nil`, `false`, or the Empty Fragment. Renders the Empty
   Fragment when no member remains.
 
-  Raises `ArgumentError` for a member that is not a Fragment, `nil`, or `false`.
+  Raises `ArgumentError` for a member that is not a Fragment, `nil`, or `false`. Raises
+  `ArgumentError` for a separator that is not a Fragment.
   """
   @spec join([Fragment.t() | nil | false], Fragment.t()) :: Fragment.t()
   def join(fragments, %Fragment{parts: separator}) when is_list(fragments) do
@@ -119,14 +120,17 @@ defmodule PlainSQL do
     %Fragment{parts: parts}
   end
 
+  def join(fragments, separator) when is_list(fragments) do
+    raise ArgumentError, "join/2 expects a Fragment separator, got: #{inspect(separator)}"
+  end
+
   defp member_parts(nil), do: []
   defp member_parts(false), do: []
   defp member_parts(%Fragment{parts: []}), do: []
   defp member_parts(%Fragment{parts: parts}), do: [parts]
 
   defp member_parts(other) do
-    raise ArgumentError,
-          "join/2 expects a Fragment, nil, or false for each member, got: #{inspect(other)}"
+    raise ArgumentError, "expected a Fragment, nil, or false, got: #{inspect(other)}"
   end
 
   @doc """
@@ -173,11 +177,79 @@ defmodule PlainSQL do
   @doc """
   Renders `WHERE ` followed by `fragment`.
 
-  Renders the Empty Fragment when `fragment` is the Empty Fragment.
+  Renders the Empty Fragment when `fragment` is the Empty Fragment, `nil`, or `false`.
+
+  Raises `ArgumentError` for an argument that is not a Fragment, `nil`, or `false`.
   """
-  @spec where(Fragment.t()) :: Fragment.t()
-  def where(%Fragment{parts: []} = empty), do: empty
-  def where(%Fragment{parts: parts}), do: %Fragment{parts: [{:text, "WHERE "} | parts]}
+  @spec where(Fragment.t() | nil | false) :: Fragment.t()
+  def where(fragment), do: clause("WHERE ", fragment)
+
+  @doc """
+  Renders `HAVING ` followed by `fragment`.
+
+  Renders the Empty Fragment when `fragment` is the Empty Fragment, `nil`, or `false`.
+
+  Raises `ArgumentError` for an argument that is not a Fragment, `nil`, or `false`.
+  """
+  @spec having(Fragment.t() | nil | false) :: Fragment.t()
+  def having(fragment), do: clause("HAVING ", fragment)
+
+  @doc """
+  Renders `GROUP BY ` followed by the members of `fragments` joined with `, `.
+
+  Skips members that are `nil`, `false`, or the Empty Fragment. Renders the Empty
+  Fragment when no member remains. No parentheses around a member.
+
+  Raises `ArgumentError` for a member that is not a Fragment, `nil`, or `false`.
+  """
+  @spec group_by([Fragment.t() | nil | false]) :: Fragment.t()
+  def group_by(fragments) when is_list(fragments), do: clause("GROUP BY ", comma_list(fragments))
+
+  @doc """
+  Renders `ORDER BY ` followed by the members of `fragments` joined with `, `.
+
+  Skips members that are `nil`, `false`, or the Empty Fragment. Renders the Empty
+  Fragment when no member remains. No parentheses around a member.
+
+  Raises `ArgumentError` for a member that is not a Fragment, `nil`, or `false`.
+  """
+  @spec order_by([Fragment.t() | nil | false]) :: Fragment.t()
+  def order_by(fragments) when is_list(fragments), do: clause("ORDER BY ", comma_list(fragments))
+
+  @doc """
+  Renders `SET ` followed by the members of `fragments` joined with `, `.
+
+  Skips members that are `nil`, `false`, or the Empty Fragment. No parentheses around a
+  member. Takes Fragments, not a map.
+
+  Raises `ArgumentError` when no member remains. `UPDATE` without `SET` is invalid SQL on
+  every Dialect. Raises `ArgumentError` for a member that is not a Fragment, `nil`, or
+  `false`.
+  """
+  @spec set([Fragment.t() | nil | false]) :: Fragment.t()
+  def set(fragments) when is_list(fragments) do
+    case comma_list(fragments) do
+      %Fragment{parts: []} -> raise ArgumentError, "set/1 needs at least one assignment"
+      members -> clause("SET ", members)
+    end
+  end
+
+  defp comma_list(fragments), do: join(fragments, %Fragment{parts: [{:text, ", "}]})
+
+  @doc """
+  Returns `true` for the Empty Fragment, `nil`, and `false`.
+
+  Raises `ArgumentError` for an argument that is not a Fragment, `nil`, or `false`.
+  """
+  @spec empty?(Fragment.t() | nil | false) :: boolean()
+  def empty?(fragment), do: member_parts(fragment) == []
+
+  defp clause(keyword, fragment) do
+    case member_parts(fragment) do
+      [] -> %Fragment{parts: []}
+      [parts] -> %Fragment{parts: [{:text, keyword} | parts]}
+    end
+  end
 
   @doc """
   Renders `fragment` for `dialect`.

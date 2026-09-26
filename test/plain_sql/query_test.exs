@@ -70,6 +70,16 @@ defmodule PlainSQL.QueryTest do
       assert {:error, %Exqlite.Error{}} = query(conn, ~q"SELECT * FROM missing WHERE id = #{1}")
     end
 
+    test "executes the UPDATE and the clause idioms", %{conn: conn} do
+      assignments = set([~q"name = #{"z"}", nil])
+      assert {:ok, _} = query(conn, ~q"UPDATE t #{assignments} WHERE id = #{1}")
+
+      select =
+        ~q"SELECT name, count(*) FROM t #{where(nil)} #{group_by([~q"name"])} #{having(~q"count(*) > #{0}")} #{order_by([~q"name DESC", false])}"
+
+      assert {:ok, %Exqlite.Result{rows: [["z", 1], ["c", 1], ["b", 1]]}} = query(conn, select)
+    end
+
     test "raises on inference failure before Rendering" do
       fragment = ~q"SELECT #{identifier(~s|a"b|)}"
 
