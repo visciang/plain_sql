@@ -8,8 +8,20 @@ defmodule PlainSQL.MixProject do
       elixir: "~> 1.20",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      aliases: aliases(),
+      test_coverage: [tool: ExCoveralls]
     ]
+  end
+
+  defp aliases do
+    [
+      all: ["compile --warnings-as-errors", "format --check-formatted", "dialyzer", "coveralls"]
+    ]
+  end
+
+  def cli do
+    [preferred_envs: [all: :test, coveralls: :test, "coveralls.html": :test]]
   end
 
   def application do
@@ -27,7 +39,9 @@ defmodule PlainSQL.MixProject do
       {:ecto_sql, "~> 3.14", optional: true},
       {:postgrex, "~> 0.22", only: :test},
       {:exqlite, "~> 0.41", only: :test},
-      {:ecto_sqlite3, "~> 0.25", only: :test}
+      {:ecto_sqlite3, "~> 0.25", only: :test},
+      {:excoveralls, "~> 0.18", only: :test},
+      {:dialyxir, "~> 1.4", only: :test, runtime: false}
     ]
   end
 end

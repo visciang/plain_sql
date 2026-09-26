@@ -6,6 +6,7 @@ export PG_URL ?= postgres://postgres:$(PG_PASSWORD)@localhost:$(PG_PORT)/postgre
 .PHONY: db-up db-down check-no-deps
 
 db-up:
+	@docker ps --quiet --filter name=^$(PG_CONTAINER)$$ | grep -q . || \
 	docker run --detach --rm --name $(PG_CONTAINER) \
 		--env POSTGRES_PASSWORD=$(PG_PASSWORD) \
 		--publish $(PG_PORT):5432 \
