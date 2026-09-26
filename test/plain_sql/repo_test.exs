@@ -67,7 +67,7 @@ defmodule PlainSQL.RepoTest do
     end
 
     test "opts reach repo.query/3 unchanged" do
-      # Ecto puts `:telemetry_options` from `opts` into the event metadata.
+      # The `:options` metadata of the query event is `opts[:telemetry_options]`.
       ref = make_ref()
       event = SQLiteRepo.config()[:telemetry_prefix] ++ [:query]
       :telemetry.attach(ref, event, &__MODULE__.forward_metadata/4, self())

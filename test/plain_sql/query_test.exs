@@ -78,8 +78,7 @@ defmodule PlainSQL.QueryTest do
     end
 
     test "opts reach the Driver unchanged", %{conn: conn} do
-      # The pool has one connection. `run/3` holds it, so a queued checkout waits. `queue:
-      # false` makes the Driver return an error at once instead.
+      # `run/3` holds the only connection of the pool.
       result =
         DBConnection.run(conn, fn _ ->
           query(conn, ~q"SELECT 1", queue: false)
@@ -89,8 +88,8 @@ defmodule PlainSQL.QueryTest do
     end
 
     test "sends the Empty Fragment to the Driver as an empty statement" do
-      # Exqlite 0.41 raises on an empty statement. Each call gets its own pool because the
-      # raise kills the connection.
+      # Exqlite 0.41 raises on an empty statement. The raise kills the connection, so each
+      # call gets its own pool.
       {:ok, driver_conn} = LiveDB.start_exqlite()
       {:ok, conn} = LiveDB.start_exqlite()
 

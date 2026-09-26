@@ -52,7 +52,7 @@ defmodule PlainSQL do
   Builds a Fragment with one Identifier.
 
   Rendering always quotes `name` with the delimiter pair of the Dialect. On Postgres
-  `identifier("Users")` renders `"Users"`, which names a different table from unquoted
+  `identifier("Users")` renders `"Users"`. That names a different table from unquoted
   `Users`. There is no composite form. Write
   `~q"\#{identifier("public")}.\#{identifier("users")}"` for a qualified name.
 
@@ -87,7 +87,7 @@ defmodule PlainSQL do
   Builds a Fragment with one placeholder per element of `values`.
 
   Rendering emits `(p1, p2, ..., pn)`. The text works after `IN` and after `NOT IN` and
-  as a `VALUES` row. A bare list in `\#{}` binds as one value instead.
+  as a `VALUES` row. A bare list in `\#{}` binds as one value.
 
   PlainSQL does not count parameters. The Driver reports its parameter limit.
 
@@ -138,11 +138,7 @@ defmodule PlainSQL do
   Raises `ArgumentError` for a member that is not a Fragment, `nil`, or `false`.
   """
   @spec all([Fragment.t() | nil | false]) :: Fragment.t()
-  def all(fragments) when is_list(fragments) do
-    fragments
-    |> Enum.map(&parenthesize/1)
-    |> join(%Fragment{parts: [{:text, " AND "}]})
-  end
+  def all(fragments) when is_list(fragments), do: join_predicates(fragments, " AND ")
 
   @doc """
   Joins the predicates in `fragments` with ` OR `.
@@ -150,16 +146,22 @@ defmodule PlainSQL do
   Wraps every member in parentheses, also a single member. Skips members that are `nil`,
   `false`, or the Empty Fragment.
 
-  Raises `ArgumentError` when no member remains. The identity of `OR` is `FALSE` and no
-  portable literal for it exists. Raises `ArgumentError` for a member that is not a
+  Raises `ArgumentError` when no member remains. The identity of `OR` is `FALSE`. No
+  portable literal for `FALSE` exists. Raises `ArgumentError` for a member that is not a
   Fragment, `nil`, or `false`.
   """
   @spec any([Fragment.t() | nil | false]) :: Fragment.t()
   def any(fragments) when is_list(fragments) do
-    case Enum.map(fragments, &parenthesize/1) |> join(%Fragment{parts: [{:text, " OR "}]}) do
+    case join_predicates(fragments, " OR ") do
       %Fragment{parts: []} -> raise ArgumentError, "any/1 needs at least one predicate"
       fragment -> fragment
     end
+  end
+
+  defp join_predicates(fragments, separator) do
+    fragments
+    |> Enum.map(&parenthesize/1)
+    |> join(%Fragment{parts: [{:text, separator}]})
   end
 
   defp parenthesize(%Fragment{parts: [_ | _] = parts}) do
@@ -252,7 +254,7 @@ defmodule PlainSQL do
   Raises `ArgumentError` when `conn_or_repo` is not a pool or when its connection module
   or adapter has no table row.
   """
-  @spec dialect(conn_or_repo :: term()) :: module()
+  @spec dialect(conn_or_repo :: DBConnection.conn() | module()) :: module()
   def dialect(conn_or_repo) do
     {dialect, _execute} = target(conn_or_repo)
     dialect
@@ -261,14 +263,16 @@ defmodule PlainSQL do
   @doc """
   Renders `fragment` for the Dialect of `conn_or_repo` and executes it.
 
-  A connection goes to `Driver.query/4`. A repo goes to `repo.query/3`, which honours
-  `put_dynamic_repo/1`. Returns the result untouched. `opts` reaches the call unchanged.
-  Raises `ArgumentError` before Rendering when `dialect/1` cannot infer a Dialect.
+  A connection goes to `Driver.query/4`. A repo goes to `repo.query/3`. The repo path
+  honours `put_dynamic_repo/1`. Returns the result untouched. `opts` reaches the call
+  unchanged. Raises `ArgumentError` before Rendering when `dialect/1` cannot infer a
+  Dialect.
 
   On the Tds path each param reaches `Tds.query/4` as a `Tds.Parameter` named after its
   placeholder.
   """
-  @spec query(conn_or_repo :: term(), Fragment.t(), opts :: keyword()) :: term()
+  @spec query(conn_or_repo :: DBConnection.conn() | module(), Fragment.t(), opts :: keyword()) ::
+          term()
   def query(conn_or_repo, %Fragment{} = fragment, opts \\ []) do
     {dialect, execute} = target(conn_or_repo)
     {sql, params} = render(fragment, dialect)

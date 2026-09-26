@@ -1,7 +1,8 @@
 defmodule PlainSQL.TestSupport.StubConnection do
   @moduledoc false
   # `use PlainSQL.TestSupport.StubConnection` makes a DBConnection module that connects to
-  # nothing. A pool started with it registers the module as its connection module.
+  # nothing. `DBConnection.connection_module/1` returns that module for a pool started
+  # with it.
 
   defmacro __using__(_opts) do
     quote do
