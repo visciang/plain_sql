@@ -6,6 +6,7 @@ defmodule PlainSQL.MixProject do
       app: :plain_sql,
       version: "0.1.0",
       elixir: "~> 1.20",
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
@@ -17,9 +18,15 @@ defmodule PlainSQL.MixProject do
     ]
   end
 
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
+
   defp deps do
     [
-      {:decimal, "~> 3.1", only: :test}
+      {:db_connection, "~> 2.10", optional: true},
+      {:decimal, "~> 3.1", only: :test},
+      {:postgrex, "~> 0.22", only: :test},
+      {:exqlite, "~> 0.41", only: :test}
     ]
   end
 end

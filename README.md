@@ -55,6 +55,40 @@ render(~q"INSERT INTO #{identifier(table)} (#{cols}) VALUES #{list(values)}", Pl
 
 `raw/1` splices SQL text known at runtime. The text renders verbatim. Never pass text derived from user input.
 
+## Execution
+
+`query/3` infers the Dialect from a live connection, renders the Fragment, and calls the Driver. The Driver result comes back untouched. `opts` reaches the Driver unchanged.
+
+```elixir
+{:ok, conn} = Postgrex.start_link(hostname: "localhost", username: "postgres", database: "app")
+PlainSQL.query(conn, ~q"SELECT * FROM orders WHERE id IN #{list(ids)}")
+#=> {:ok, %Postgrex.Result{...}}
+
+{:ok, conn} = Exqlite.start_link(database: "app.db")
+PlainSQL.query(conn, ~q"SELECT * FROM orders WHERE id = #{id}", timeout: 1_000)
+#=> {:ok, %Exqlite.Result{...}}
+```
+
+`dialect/1` returns the Dialect module alone. Use it with a Driver function that `query/3` does not cover.
+
+```elixir
+{sql, params} = render(fragment, PlainSQL.dialect(conn))
+Postgrex.stream(conn, sql, params)
+```
+
+`conn` is a `DBConnection.conn()`: a pool pid, a registered name, a `{:via, _, _}` tuple, or the handle inside `DBConnection.run/3` and `DBConnection.transaction/3`. `dialect/1` raises `ArgumentError` for a value that is not a pool and for a connection module outside the table below.
+
+| Connection module | Dialect |
+|---|---|
+| `Postgrex.Protocol` | `PlainSQL.Dialect.Postgres` |
+| `Exqlite.Connection` | `PlainSQL.Dialect.SQLite` |
+
+`db_connection` is an optional dependency. Add the Driver to the deps of the application.
+
+### Tests
+
+`mix test` runs the SQLite tests on an in-memory database. The Postgres tests run only when `PG_URL` is set. `make db-up` starts a Postgres container and prints the `PG_URL` to export. `make db-down` stops it.
+
 ## Portability
 
 > PlainSQL renders one Fragment for one Dialect at a time. A Dialect decides the placeholder style and the identifier quoting. A Dialect does not change the SQL text. PlainSQL does not check that the SQL text is valid for the target database. The developer owns the SQL text.

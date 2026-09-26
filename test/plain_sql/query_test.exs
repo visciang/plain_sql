@@ -1,0 +1,126 @@
+defmodule PlainSQL.QueryTest do
+  use ExUnit.Case, async: true
+
+  import PlainSQL
+
+  alias PlainSQL.Dialect.Postgres
+  alias PlainSQL.Dialect.SQLite
+  alias PlainSQL.TestSupport.LiveDB
+  alias PlainSQL.TestSupport.UnknownConnection
+
+  describe "dialect/1 with a connection" do
+    @tag :live_postgres
+    test "returns Postgres for a Postgrex pool" do
+      {:ok, conn} = LiveDB.start_postgrex()
+      assert dialect(conn) == Postgres
+    end
+
+    test "returns SQLite for an Exqlite pool" do
+      {:ok, conn} = LiveDB.start_exqlite()
+      assert dialect(conn) == SQLite
+    end
+
+    test "accepts a registered name" do
+      {:ok, _} = LiveDB.start_exqlite(name: :plain_sql_named_sqlite)
+      assert dialect(:plain_sql_named_sqlite) == SQLite
+    end
+
+    test "accepts a via tuple" do
+      {:ok, _} = Registry.start_link(keys: :unique, name: PlainSQL.TestRegistry)
+      via = {:via, Registry, {PlainSQL.TestRegistry, :sqlite}}
+      {:ok, _} = LiveDB.start_exqlite(name: via)
+
+      assert dialect(via) == SQLite
+    end
+
+    test "accepts the handle inside run/3 and transaction/3" do
+      {:ok, conn} = LiveDB.start_exqlite()
+
+      assert DBConnection.run(conn, &dialect/1) == SQLite
+      assert DBConnection.transaction(conn, &dialect/1) == {:ok, SQLite}
+    end
+
+    test "raises ArgumentError naming the value for a process that is not a pool" do
+      error = assert_raise ArgumentError, fn -> dialect(self()) end
+      assert error.message =~ inspect(self())
+    end
+
+    test "raises ArgumentError naming the module for a connection module with no table row" do
+      {:ok, conn} = DBConnection.start_link(UnknownConnection, pool_size: 1)
+
+      error = assert_raise ArgumentError, fn -> dialect(conn) end
+      assert error.message =~ inspect(UnknownConnection)
+    end
+  end
+
+  describe "query/3 with an Exqlite connection" do
+    setup do
+      {:ok, conn} = LiveDB.start_exqlite()
+      Exqlite.query!(conn, "CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)", [])
+      Exqlite.query!(conn, "INSERT INTO t (id, name) VALUES (1, 'a'), (2, 'b'), (3, 'c')", [])
+      %{conn: conn}
+    end
+
+    test "returns the Driver result untouched", %{conn: conn} do
+      assert {:ok, %Exqlite.Result{rows: [[2, "b"], [3, "c"]]}} =
+               query(conn, ~q"SELECT id, name FROM t WHERE id IN #{list([2, 3])} ORDER BY id")
+
+      assert {:error, %Exqlite.Error{}} = query(conn, ~q"SELECT * FROM missing WHERE id = #{1}")
+    end
+
+    test "raises on inference failure before Rendering" do
+      fragment = ~q"SELECT #{identifier(~s|a"b|)}"
+
+      error = assert_raise ArgumentError, fn -> query(self(), fragment) end
+      assert error.message =~ inspect(self())
+    end
+
+    test "opts reach the Driver unchanged", %{conn: conn} do
+      # The pool has one connection. `run/3` holds it, so a queued checkout waits. `queue:
+      # false` makes the Driver return an error at once instead.
+      result =
+        DBConnection.run(conn, fn _ ->
+          query(conn, ~q"SELECT 1", queue: false)
+        end)
+
+      assert {:error, %DBConnection.ConnectionError{}} = result
+    end
+
+    test "sends the Empty Fragment to the Driver as an empty statement" do
+      # Exqlite 0.41 raises on an empty statement. Each call gets its own pool because the
+      # raise kills the connection.
+      {:ok, driver_conn} = LiveDB.start_exqlite()
+      {:ok, conn} = LiveDB.start_exqlite()
+
+      assert catch_error(query(conn, ~q"")) == catch_error(Exqlite.query(driver_conn, "", []))
+    end
+  end
+
+  describe "query/3 with a Postgrex connection" do
+    @describetag :live_postgres
+
+    setup do
+      {:ok, conn} = LiveDB.start_postgrex()
+      %{conn: conn}
+    end
+
+    test "returns the Driver result untouched", %{conn: conn} do
+      assert {:ok, %Postgrex.Result{rows: [[2], [3]]}} =
+               query(
+                 conn,
+                 ~q"SELECT x FROM unnest(#{[1, 2, 3]}::int[]) AS x WHERE x IN #{list([2, 3])}"
+               )
+
+      assert {:error, %Postgrex.Error{}} = query(conn, ~q"SELECT * FROM missing WHERE id = #{1}")
+    end
+
+    test "opts reach the Driver unchanged", %{conn: conn} do
+      assert {:ok, %Postgrex.Result{rows: [{1}]}} =
+               query(conn, ~q"SELECT #{1}::int", decode_mapper: &List.to_tuple/1)
+    end
+
+    test "sends the Empty Fragment to the Driver as an empty statement", %{conn: conn} do
+      assert query(conn, ~q"") == Postgrex.query(conn, "", [])
+    end
+  end
+end

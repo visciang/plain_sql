@@ -217,4 +217,56 @@ defmodule PlainSQL do
 
     [open, name, close]
   end
+
+  # Connection module of a DBConnection pool => {Dialect, Driver module}.
+  @connection_drivers %{
+    Postgrex.Protocol => {PlainSQL.Dialect.Postgres, Postgrex},
+    Exqlite.Connection => {PlainSQL.Dialect.SQLite, Exqlite}
+  }
+
+  @doc """
+  Returns the shipped Dialect module for a live connection.
+
+  `conn` is a `DBConnection.conn()`: a pool pid, a registered name, a `{:via, _, _}`
+  tuple, or the handle inside `DBConnection.run/3` and `DBConnection.transaction/3`.
+  The inference table is closed:
+
+  | Connection module | Dialect |
+  |---|---|
+  | `Postgrex.Protocol` | `PlainSQL.Dialect.Postgres` |
+  | `Exqlite.Connection` | `PlainSQL.Dialect.SQLite` |
+
+  Raises `ArgumentError` when `conn` is not a pool or when its connection module has no
+  table row.
+  """
+  @spec dialect(conn :: term()) :: module()
+  def dialect(conn) do
+    {dialect, _driver} = driver(conn)
+    dialect
+  end
+
+  @doc """
+  Renders `fragment` for the Dialect of `conn` and executes it through the Driver.
+
+  Returns the Driver result untouched. `opts` reaches the Driver unchanged. Raises
+  `ArgumentError` before Rendering when `dialect/1` cannot infer a Dialect.
+  """
+  @spec query(conn :: term(), Fragment.t(), opts :: keyword()) :: term()
+  def query(conn, %Fragment{} = fragment, opts \\ []) do
+    {dialect, driver} = driver(conn)
+    {sql, params} = render(fragment, dialect)
+    apply(driver, :query, [conn, sql, params, opts])
+  end
+
+  # `apply/3` keeps the compile warning-free when `db_connection` is absent.
+  defp driver(conn) do
+    case apply(DBConnection, :connection_module, [conn]) do
+      {:ok, module} ->
+        Map.get(@connection_drivers, module) ||
+          raise ArgumentError, "no Dialect for connection module #{inspect(module)}"
+
+      :error ->
+        raise ArgumentError, "#{inspect(conn)} is not a DBConnection pool"
+    end
+  end
 end
