@@ -130,6 +130,23 @@ defmodule PlainSQL.QueryTest do
                query(conn, ~q"SELECT #{1}::int", decode_mapper: &List.to_tuple/1)
     end
 
+    test "a bare list binds as one array; = ANY([]) matches no row, <> ALL([]) every row",
+         %{conn: conn} do
+      rows = fn ids, op ->
+        {:ok, %Postgrex.Result{rows: rows}} =
+          query(
+            conn,
+            ~q"SELECT x FROM unnest(#{[1, 2, 3]}::int[]) AS x WHERE x #{op}(#{ids}) ORDER BY x"
+          )
+
+        rows
+      end
+
+      assert rows.([1, 2], ~q"= ANY") == [[1], [2]]
+      assert rows.([], ~q"= ANY") == []
+      assert rows.([], ~q"<> ALL") == [[1], [2], [3]]
+    end
+
     test "sends the Empty Fragment to the Driver as an empty statement", %{conn: conn} do
       assert query(conn, ~q"") == Postgrex.query(conn, "", [])
     end

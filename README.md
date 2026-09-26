@@ -69,6 +69,17 @@ render(~q"SELECT * FROM orders #{where(conds)}", PlainSQL.Dialect.Postgres)
 
 `list([])` raises `ArgumentError`. `IN ()` is invalid SQL on every Dialect. An empty list has two possible meanings. The guard `ids != [] && ...` states "an empty list is no filter". The predicate `ids == [] && ~q"1 = 0"` states "an empty list matches no row". PlainSQL does not pick one. The developer writes the meaning.
 
+On Postgres the array form needs no guard. A bare list in `#{}` binds as one value. The Driver sends it as an array. `id = ANY(#{ids})` matches no row for `[]`. `id <> ALL(#{ids})` matches every row for `[]`. The parameter count stays at one for any list length.
+
+```elixir
+ids = [1, 2]
+
+render(~q"SELECT * FROM orders WHERE id = ANY(#{ids})", PlainSQL.Dialect.Postgres)
+#=> {"SELECT * FROM orders WHERE id = ANY($1)", [[1, 2]]}
+```
+
+`ANY` and `ALL` with a subquery work on every Dialect. Splice the subquery: `~q"total > ALL (#{subquery})"`.
+
 `group_by/1`, `order_by/1`, and `set/1` take a list. They skip absent members and join the rest with `, `. `set/1` raises `ArgumentError` when no member remains. `empty?/1` returns `true` for an absent value.
 
 ```elixir
