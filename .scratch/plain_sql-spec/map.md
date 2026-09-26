@@ -39,12 +39,12 @@ A design spec for `plain_sql`, an Elixir library that lets a developer write SQL
 
 ## Not yet specified
 
-- Named bindings (`:id`) versus positional bindings.
-- Test strategy for Rendering per Dialect (golden files, property tests over Splicing).
-- Error surface: the message text for each error PlainSQL raises. The exception module is settled: `ArgumentError` in every case, by [Composition model](issues/02-composition-model.md), [Portability statement](issues/04-portability-statement.md), [Execution seam](issues/07-execution-seam.md), [Compile-time checks in the sigil](issues/08-compile-time-checks.md), and [Identifier binding and the raw-text escape hatch](issues/09-identifier-and-raw.md).
+none. The destination is reached (2026-09-26).
 
 ## Out of scope
 
+- Named bindings (`:id` style). `~q` binds by expression position, by [Sigil name and the Binding rule](issues/03-sigil-and-binding-rule.md). A named form is a new effort.
+- Test strategy for Rendering per Dialect and the message text of each `ArgumentError`. The implementation effort decides them. `docs/spec.md` section 7 lists them.
 - Connection pooling and wire protocols. Drivers own them.
 - Transactions and streaming. Drivers and Ecto own them.
 - Result-row mapping to structs. Every Driver has a different result shape.

@@ -305,6 +305,7 @@ One package. `db_connection` and `ecto_sql` are `optional: true` deps. Driver mo
 - `INSERT` and `UPDATE SET` builders from a map, and dynamic `ORDER BY` builders. Ruled out by the boundary rule of section 2.4.
 - Dialect-specific Fragments (a `dialect:` tag that makes Rendering under another Dialect raise). Ruled out by the portability statement.
 - A `~q` Fragment inside an Ecto `fragment/1`. It needs Ecto's `?` placeholder and a compile-time literal. That is macro work against `Ecto.Query`, not Rendering.
+- Named bindings (`:id` style). `~q` binds by expression position. A named form is a new effort.
 
 ## 7. Open items
 
@@ -312,7 +313,6 @@ These items are not fixed by this spec. The implementation effort decides them.
 
 - The message text of each `ArgumentError` in section 2.6.
 - The test strategy for Rendering per Dialect.
-- Named bindings. The `~q` design binds by expression position. No ticket has decided whether a named form is wanted.
 
 ## Appendix: traceability
 
