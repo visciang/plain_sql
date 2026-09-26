@@ -30,14 +30,14 @@ A design spec for `plain_sql`, an Elixir library that lets a developer write SQL
 - [Dialect inference from a connection or repo](issues/06-dialect-inference.md): yes, through `DBConnection.connection_module/1` and `repo.__adapter__/0`; PlainSQL owns the module-to-Dialect table; no Driver accepts a `{sql, params}` tuple.
 - [Composition model: Splicing semantics and clause helpers](issues/02-composition-model.md): a Fragment is a parts list numbered at Rendering; Splicing is verbatim list concatenation; helpers `all/1`, `any/1`, `where/1`, `list/1`; a helper never reads the text around it.
 - [Sigil name and the Binding rule for `#{}`](issues/03-sigil-and-binding-rule.md): `~q`; a `%PlainSQL.Fragment{}` in `#{}` splices and any other value binds, decided at runtime by struct match; no modifiers in v1; sigil text is verbatim; the Empty Fragment is `parts: []`.
+- [Portability statement and the closed divergence list](issues/04-portability-statement.md): a Dialect decides two things, the placeholder text for position N and the identifier delimiter pair; `{:list, values}` renders `(p1, ..., pn)` on every Dialect; Rendering never inspects a value, the Driver raises; an embedded delimiter in an identifier raises `ArgumentError`; SQLite uses `?`; README statement text fixed.
 
 ## Not yet specified
 
 - Named bindings (`:id`) versus positional bindings.
-- Dialect-specific Fragments: whether a Fragment can declare "Postgres only" and what Rendering does for another Dialect.
 - Test strategy for Rendering per Dialect (golden files, property tests over Splicing).
 - Ecto interop: a Fragment inside `Repo.query/2`, and whether an Ecto `fragment/1` bridge is wanted.
-- Error surface: what a developer sees when a Binding is wrong (compile error, `ArgumentError` at Rendering, Dialect-specific message).
+- Error surface: the exception module and message text for each error PlainSQL raises. Two cases are settled by [Portability statement](issues/04-portability-statement.md). Ticket 08 covers the sigil at compile time.
 - Packaging: one hex package or core plus Dialect packages.
 
 ## Out of scope
@@ -51,3 +51,4 @@ A design spec for `plain_sql`, an Elixir library that lets a developer write SQL
 - SQL transpiling: rewriting `LIMIT`/`TOP`, `RETURNING`, upsert, boolean literals, or any SQL text between Dialects. A Dialect changes how values and identifiers are bound, never what the SQL says.
 - Forking or contributing to elixir-dbvisor/sql.
 - `INSERT` and `UPDATE SET` builders from a map, and dynamic `ORDER BY` builders. Ruled out by the boundary rule of [Composition model](issues/02-composition-model.md): a helper never reads the text around it.
+- Dialect-specific Fragments (a `dialect:` tag that makes Rendering under another Dialect raise). Ruled out by the statement of [Portability statement](issues/04-portability-statement.md): PlainSQL does not check that the SQL text is valid for the target database.
