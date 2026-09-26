@@ -26,6 +26,9 @@ A design spec for `plain_sql`, an Elixir library that lets a developer write SQL
 
 <!-- one line per resolved ticket: [title](issues/NN-slug.md): gist -->
 
+- [Prior art survey: composable SQL-as-text libraries](issues/01-prior-art-survey.md): text-based libraries order Bindings by text position, treat the empty Fragment as first-class, change SQL text per Dialect only for `IN`, and none promises one SQL text runs everywhere.
+- [Dialect inference from a connection or repo](issues/06-dialect-inference.md): yes, through `DBConnection.connection_module/1` and `repo.__adapter__/0`; PlainSQL owns the module-to-Dialect table; no Driver accepts a `{sql, params}` tuple.
+
 ## Not yet specified
 
 - Named bindings (`:id`) versus positional bindings, and whether a Fragment may bind the same value twice.
