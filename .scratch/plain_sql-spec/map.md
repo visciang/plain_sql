@@ -32,14 +32,13 @@ A design spec for `plain_sql`, an Elixir library that lets a developer write SQL
 - [Sigil name and the Binding rule for `#{}`](issues/03-sigil-and-binding-rule.md): `~q`; a `%PlainSQL.Fragment{}` in `#{}` splices and any other value binds, decided at runtime by struct match; no modifiers in v1; sigil text is verbatim; the Empty Fragment is `parts: []`.
 - [Portability statement and the closed divergence list](issues/04-portability-statement.md): a Dialect decides two things, the placeholder text for position N and the identifier delimiter pair; `{:list, values}` renders `(p1, ..., pn)` on every Dialect; Rendering never inspects a value, the Driver raises; an embedded delimiter in an identifier raises `ArgumentError`; SQLite uses `?`; README statement text fixed.
 - [Dialect contract and Rendering output](issues/05-dialect-contract.md): `@behaviour PlainSQL.Dialect` with `placeholder/1` and `identifier_delimiters/0`; four modules ship under `PlainSQL.Dialect.*` (Postgres, SQLite, MySQL, MSSQL); `PlainSQL.render/2` returns `{sql :: String.t(), params :: list}` and raises; the Dialect module is explicit on every call, no defaults, no atoms; helpers and `render/2` live in `PlainSQL`.
+- [Execution seam: render-only or a thin `query/2`](issues/07-execution-seam.md): in, as `PlainSQL.dialect/1` and `PlainSQL.query/3` in the core package; the Dialect comes from `DBConnection.connection_module/1` or `repo.__adapter__/0` through a closed four-row table; an atom that exports `__adapter__/0` is a repo, the repo path calls the injected `repo.query/3`; the Driver result and `opts` pass through untouched; the Tds row wraps params in `%Tds.Parameter{}`; inference failure raises `ArgumentError`, no override; `db_connection` and `ecto_sql` are optional deps.
 
 ## Not yet specified
 
 - Named bindings (`:id`) versus positional bindings.
 - Test strategy for Rendering per Dialect (golden files, property tests over Splicing).
-- Ecto interop: a Fragment inside `Repo.query/2`, and whether an Ecto `fragment/1` bridge is wanted.
-- Error surface: the exception module and message text for each error PlainSQL raises. Two cases are settled by [Portability statement](issues/04-portability-statement.md). Ticket 08 covers the sigil at compile time.
-- Packaging: the four Dialect modules are in the core package ([Dialect contract](issues/05-dialect-contract.md)). Open: whether an Ecto bridge, if ticket 07 wants one, is a separate package.
+- Error surface: the exception module and message text for each error PlainSQL raises. Two cases are settled by [Portability statement](issues/04-portability-statement.md), one by [Execution seam](issues/07-execution-seam.md). Ticket 08 covers the sigil at compile time.
 
 ## Out of scope
 
@@ -53,3 +52,4 @@ A design spec for `plain_sql`, an Elixir library that lets a developer write SQL
 - Forking or contributing to elixir-dbvisor/sql.
 - `INSERT` and `UPDATE SET` builders from a map, and dynamic `ORDER BY` builders. Ruled out by the boundary rule of [Composition model](issues/02-composition-model.md): a helper never reads the text around it.
 - Dialect-specific Fragments (a `dialect:` tag that makes Rendering under another Dialect raise). Ruled out by the statement of [Portability statement](issues/04-portability-statement.md): PlainSQL does not check that the SQL text is valid for the target database.
+- A `~q` Fragment inside an Ecto `fragment/1`. Ruled out by [Execution seam](issues/07-execution-seam.md): it needs Ecto's `?` placeholder and a compile-time literal, which is macro work against `Ecto.Query`, not Rendering.
