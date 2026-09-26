@@ -87,6 +87,24 @@ Postgrex.stream(conn, sql, params)
 
 `db_connection` is an optional dependency. Add the Driver to the deps of the application.
 
+### Ecto repos
+
+`query/3` and `dialect/1` accept an Ecto repo module. An atom that exports `__adapter__/0` is a repo. Every other value is a connection. A repo pid is not a repo.
+
+```elixir
+PlainSQL.query(MyApp.Repo, ~q"SELECT * FROM orders WHERE id = #{id}")
+#=> {:ok, %Postgrex.Result{...}}
+```
+
+The repo path calls `repo.query(sql, params, opts)`. It honours `put_dynamic_repo/1`. `ecto_sql` is an optional dependency.
+
+| Ecto adapter | Dialect |
+|---|---|
+| `Ecto.Adapters.Postgres` | `PlainSQL.Dialect.Postgres` |
+| `Ecto.Adapters.SQLite3` | `PlainSQL.Dialect.SQLite` |
+| `Ecto.Adapters.MyXQL` | `PlainSQL.Dialect.MySQL` |
+| `Ecto.Adapters.Tds` | `PlainSQL.Dialect.MSSQL` |
+
 Postgres and SQLite are the reference Dialects. The test suite executes against both. MySQL and MSSQL are Rendering-tested only. No MySQL or MSSQL database runs in the test suite.
 
 ### Tests

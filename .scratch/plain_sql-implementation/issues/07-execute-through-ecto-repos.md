@@ -8,15 +8,15 @@ This ticket adds `ecto_sql` as an optional dep. The test suite runs a Postgres r
 
 **Blocked by:** 05 (Execute through Postgres and SQLite connections).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] An atom that exports `__adapter__/0` takes the repo path. Every other value takes the connection path.
-- [ ] `dialect(repo)` maps `Ecto.Adapters.Postgres`, `Ecto.Adapters.SQLite3`, `Ecto.Adapters.MyXQL`, and `Ecto.Adapters.Tds` to the four Dialect modules.
-- [ ] `dialect(repo)` raises `ArgumentError` for an adapter with no table row. The message names the adapter.
-- [ ] A repo pid is not a repo. `dialect(repo_pid)` follows the connection path and raises `ArgumentError` when `DBConnection.connection_module/1` returns `:error`.
-- [ ] `query(repo, fragment, opts)` calls `repo.query(sql, params, opts)` and returns the result untouched, both the `{:ok, _}` and the `{:error, _}` form.
-- [ ] `opts` reaches `repo.query/3` unchanged.
-- [ ] A test with two repo processes and `put_dynamic_repo/1` observes the query on the dynamic repo.
-- [ ] The Postgres repo and the SQLite repo each execute a Fragment with a Binding and a `list/1` part against the live database.
-- [ ] `mix compile --warnings-as-errors` is clean with `ecto_sql` absent from the deps.
-- [ ] The README documents the repo form of `query/3` and the dispatch rule.
+- [x] An atom that exports `__adapter__/0` takes the repo path. Every other value takes the connection path.
+- [x] `dialect(repo)` maps `Ecto.Adapters.Postgres`, `Ecto.Adapters.SQLite3`, `Ecto.Adapters.MyXQL`, and `Ecto.Adapters.Tds` to the four Dialect modules.
+- [x] `dialect(repo)` raises `ArgumentError` for an adapter with no table row. The message names the adapter.
+- [x] A repo pid is not a repo. `dialect(repo_pid)` follows the connection path and raises `ArgumentError` when `DBConnection.connection_module/1` returns `:error`.
+- [x] `query(repo, fragment, opts)` calls `repo.query(sql, params, opts)` and returns the result untouched, both the `{:ok, _}` and the `{:error, _}` form.
+- [x] `opts` reaches `repo.query/3` unchanged.
+- [x] A test with two repo processes and `put_dynamic_repo/1` observes the query on the dynamic repo.
+- [x] The Postgres repo and the SQLite repo each execute a Fragment with a Binding and a `list/1` part against the live database.
+- [x] `mix compile --warnings-as-errors` is clean with `ecto_sql` absent from the deps.
+- [x] The README documents the repo form of `query/3` and the dispatch rule.

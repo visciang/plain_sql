@@ -24,9 +24,10 @@ defmodule PlainSQL.MixProject do
   defp deps do
     [
       {:db_connection, "~> 2.10", optional: true},
-      {:decimal, "~> 3.1", only: :test},
+      {:ecto_sql, "~> 3.14", optional: true},
       {:postgrex, "~> 0.22", only: :test},
-      {:exqlite, "~> 0.41", only: :test}
+      {:exqlite, "~> 0.41", only: :test},
+      {:ecto_sqlite3, "~> 0.25", only: :test}
     ]
   end
 end

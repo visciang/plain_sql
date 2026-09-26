@@ -226,43 +226,87 @@ defmodule PlainSQL do
     Tds.Protocol => {PlainSQL.Dialect.MSSQL, Tds}
   }
 
+  # Ecto adapter of a repo module => Dialect.
+  @adapter_dialects %{
+    Ecto.Adapters.Postgres => PlainSQL.Dialect.Postgres,
+    Ecto.Adapters.SQLite3 => PlainSQL.Dialect.SQLite,
+    Ecto.Adapters.MyXQL => PlainSQL.Dialect.MySQL,
+    Ecto.Adapters.Tds => PlainSQL.Dialect.MSSQL
+  }
+
   @doc """
-  Returns the shipped Dialect module for a live connection.
+  Returns the shipped Dialect module for a live connection or an Ecto repo module.
 
-  `conn` is a `DBConnection.conn()`: a pool pid, a registered name, a `{:via, _, _}`
-  tuple, or the handle inside `DBConnection.run/3` and `DBConnection.transaction/3`.
-  The inference table is closed:
+  An atom that exports `__adapter__/0` is a repo. Every other value is a
+  `DBConnection.conn()`: a pool pid, a registered name, a `{:via, _, _}` tuple, or the
+  handle inside `DBConnection.run/3` and `DBConnection.transaction/3`. A repo pid is not a
+  repo. The inference table is closed:
 
-  | Connection module | Dialect |
-  |---|---|
-  | `Postgrex.Protocol` | `PlainSQL.Dialect.Postgres` |
-  | `Exqlite.Connection` | `PlainSQL.Dialect.SQLite` |
-  | `MyXQL.Connection` | `PlainSQL.Dialect.MySQL` |
-  | `Tds.Protocol` | `PlainSQL.Dialect.MSSQL` |
+  | Connection module | Ecto adapter | Dialect |
+  |---|---|---|
+  | `Postgrex.Protocol` | `Ecto.Adapters.Postgres` | `PlainSQL.Dialect.Postgres` |
+  | `Exqlite.Connection` | `Ecto.Adapters.SQLite3` | `PlainSQL.Dialect.SQLite` |
+  | `MyXQL.Connection` | `Ecto.Adapters.MyXQL` | `PlainSQL.Dialect.MySQL` |
+  | `Tds.Protocol` | `Ecto.Adapters.Tds` | `PlainSQL.Dialect.MSSQL` |
 
-  Raises `ArgumentError` when `conn` is not a pool or when its connection module has no
-  table row.
+  Raises `ArgumentError` when `conn_or_repo` is not a pool or when its connection module
+  or adapter has no table row.
   """
-  @spec dialect(conn :: term()) :: module()
-  def dialect(conn) do
-    {dialect, _driver} = driver(conn)
+  @spec dialect(conn_or_repo :: term()) :: module()
+  def dialect(conn_or_repo) do
+    {dialect, _execute} = target(conn_or_repo)
     dialect
   end
 
   @doc """
-  Renders `fragment` for the Dialect of `conn` and executes it through the Driver.
+  Renders `fragment` for the Dialect of `conn_or_repo` and executes it.
 
-  Returns the Driver result untouched. `opts` reaches the Driver unchanged. Raises
-  `ArgumentError` before Rendering when `dialect/1` cannot infer a Dialect.
+  A connection goes to `Driver.query/4`. A repo goes to `repo.query/3`, which honours
+  `put_dynamic_repo/1`. Returns the result untouched. `opts` reaches the call unchanged.
+  Raises `ArgumentError` before Rendering when `dialect/1` cannot infer a Dialect.
 
   On the Tds path each param reaches `Tds.query/4` as a `Tds.Parameter` named after its
   placeholder.
   """
-  @spec query(conn :: term(), Fragment.t(), opts :: keyword()) :: term()
-  def query(conn, %Fragment{} = fragment, opts \\ []) do
-    {dialect, driver} = driver(conn)
+  @spec query(conn_or_repo :: term(), Fragment.t(), opts :: keyword()) :: term()
+  def query(conn_or_repo, %Fragment{} = fragment, opts \\ []) do
+    {dialect, execute} = target(conn_or_repo)
     {sql, params} = render(fragment, dialect)
-    apply(driver, :query, [conn, sql, driver_params(driver, params), opts])
+    execute.(sql, params, opts)
+  end
+
+  defp target(conn_or_repo) do
+    if repo?(conn_or_repo), do: repo_target(conn_or_repo), else: connection_target(conn_or_repo)
+  end
+
+  defp repo?(atom) when is_atom(atom),
+    do: Code.ensure_loaded?(atom) and function_exported?(atom, :__adapter__, 0)
+
+  defp repo?(_other), do: false
+
+  defp repo_target(repo) do
+    adapter = repo.__adapter__()
+
+    dialect =
+      Map.get(@adapter_dialects, adapter) ||
+        raise ArgumentError, "no Dialect for Ecto adapter #{inspect(adapter)}"
+
+    {dialect, &repo.query(&1, &2, &3)}
+  end
+
+  # `apply/3` keeps the compile warning-free when `db_connection` is absent.
+  defp connection_target(conn) do
+    case apply(DBConnection, :connection_module, [conn]) do
+      {:ok, module} ->
+        {dialect, driver} =
+          Map.get(@connection_drivers, module) ||
+            raise ArgumentError, "no Dialect for connection module #{inspect(module)}"
+
+        {dialect, &apply(driver, :query, [conn, &1, driver_params(driver, &2), &3])}
+
+      :error ->
+        raise ArgumentError, "#{inspect(conn)} is not a DBConnection pool"
+    end
   end
 
   defp driver_params(Tds, params) do
@@ -272,16 +316,4 @@ defmodule PlainSQL do
   end
 
   defp driver_params(_driver, params), do: params
-
-  # `apply/3` keeps the compile warning-free when `db_connection` is absent.
-  defp driver(conn) do
-    case apply(DBConnection, :connection_module, [conn]) do
-      {:ok, module} ->
-        Map.get(@connection_drivers, module) ||
-          raise ArgumentError, "no Dialect for connection module #{inspect(module)}"
-
-      :error ->
-        raise ArgumentError, "#{inspect(conn)} is not a DBConnection pool"
-    end
-  end
 end
