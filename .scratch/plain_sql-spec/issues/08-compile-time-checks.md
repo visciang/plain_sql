@@ -10,6 +10,8 @@ Which checks does the sigil macro perform at compile time, and how does each sur
 
 Leaning from charting: light checks only, no lexing of the SQL text.
 
+From ticket 03: the macro raises `CompileError` on any sigil modifier. This is the first check.
+
 Candidates:
 
 1. A `#{}` that holds a compile-time string literal where SQL text is expected: reject, or bind as a value.

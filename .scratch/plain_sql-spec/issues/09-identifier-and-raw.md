@@ -15,6 +15,8 @@ Settle:
 3. Whether a plain string can ever splice as SQL text without an explicit marker. Leaning: no.
 4. Composite identifiers (`schema.table`) and identifier lists (column lists for `INSERT`).
 
+From ticket 03: sigil modifiers are out for v1, so option 1 is a function. The sigil treats only `%PlainSQL.Fragment{}` as special; an identifier or raw-text marker is a further part shape or struct that this ticket defines.
+
 ## Blocks
 
 10
