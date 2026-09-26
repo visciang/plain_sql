@@ -221,7 +221,9 @@ defmodule PlainSQL do
   # Connection module of a DBConnection pool => {Dialect, Driver module}.
   @connection_drivers %{
     Postgrex.Protocol => {PlainSQL.Dialect.Postgres, Postgrex},
-    Exqlite.Connection => {PlainSQL.Dialect.SQLite, Exqlite}
+    Exqlite.Connection => {PlainSQL.Dialect.SQLite, Exqlite},
+    MyXQL.Connection => {PlainSQL.Dialect.MySQL, MyXQL},
+    Tds.Protocol => {PlainSQL.Dialect.MSSQL, Tds}
   }
 
   @doc """
@@ -235,6 +237,8 @@ defmodule PlainSQL do
   |---|---|
   | `Postgrex.Protocol` | `PlainSQL.Dialect.Postgres` |
   | `Exqlite.Connection` | `PlainSQL.Dialect.SQLite` |
+  | `MyXQL.Connection` | `PlainSQL.Dialect.MySQL` |
+  | `Tds.Protocol` | `PlainSQL.Dialect.MSSQL` |
 
   Raises `ArgumentError` when `conn` is not a pool or when its connection module has no
   table row.
@@ -250,13 +254,24 @@ defmodule PlainSQL do
 
   Returns the Driver result untouched. `opts` reaches the Driver unchanged. Raises
   `ArgumentError` before Rendering when `dialect/1` cannot infer a Dialect.
+
+  On the Tds path each param reaches `Tds.query/4` as a `Tds.Parameter` named after its
+  placeholder.
   """
   @spec query(conn :: term(), Fragment.t(), opts :: keyword()) :: term()
   def query(conn, %Fragment{} = fragment, opts \\ []) do
     {dialect, driver} = driver(conn)
     {sql, params} = render(fragment, dialect)
-    apply(driver, :query, [conn, sql, params, opts])
+    apply(driver, :query, [conn, sql, driver_params(driver, params), opts])
   end
+
+  defp driver_params(Tds, params) do
+    Enum.with_index(params, fn value, index ->
+      struct(Tds.Parameter, name: "@#{index + 1}", value: value)
+    end)
+  end
+
+  defp driver_params(_driver, params), do: params
 
   # `apply/3` keeps the compile warning-free when `db_connection` is absent.
   defp driver(conn) do

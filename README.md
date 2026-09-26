@@ -78,12 +78,16 @@ Postgrex.stream(conn, sql, params)
 
 `conn` is a `DBConnection.conn()`: a pool pid, a registered name, a `{:via, _, _}` tuple, or the handle inside `DBConnection.run/3` and `DBConnection.transaction/3`. `dialect/1` raises `ArgumentError` for a value that is not a pool and for a connection module outside the table below.
 
-| Connection module | Dialect |
-|---|---|
-| `Postgrex.Protocol` | `PlainSQL.Dialect.Postgres` |
-| `Exqlite.Connection` | `PlainSQL.Dialect.SQLite` |
+| Connection module | Dialect | Driver call |
+|---|---|---|
+| `Postgrex.Protocol` | `PlainSQL.Dialect.Postgres` | `Postgrex.query/4` |
+| `Exqlite.Connection` | `PlainSQL.Dialect.SQLite` | `Exqlite.query/4` |
+| `MyXQL.Connection` | `PlainSQL.Dialect.MySQL` | `MyXQL.query/4` |
+| `Tds.Protocol` | `PlainSQL.Dialect.MSSQL` | `Tds.query/4` with each param as a `Tds.Parameter` named `@n` |
 
 `db_connection` is an optional dependency. Add the Driver to the deps of the application.
+
+Postgres and SQLite are the reference Dialects. The test suite executes against both. MySQL and MSSQL are Rendering-tested only. No MySQL or MSSQL database runs in the test suite.
 
 ### Tests
 

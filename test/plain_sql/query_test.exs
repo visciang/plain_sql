@@ -3,6 +3,8 @@ defmodule PlainSQL.QueryTest do
 
   import PlainSQL
 
+  alias PlainSQL.Dialect.MSSQL
+  alias PlainSQL.Dialect.MySQL
   alias PlainSQL.Dialect.Postgres
   alias PlainSQL.Dialect.SQLite
   alias PlainSQL.TestSupport.LiveDB
@@ -121,6 +123,35 @@ defmodule PlainSQL.QueryTest do
 
     test "sends the Empty Fragment to the Driver as an empty statement", %{conn: conn} do
       assert query(conn, ~q"") == Postgrex.query(conn, "", [])
+    end
+  end
+
+  describe "MyXQL and Tds dispatch" do
+    # The pools use the test doubles of test/support/fake_drivers.ex.
+    setup do
+      {:ok, mysql} = DBConnection.start_link(MyXQL.Connection, pool_size: 1)
+      {:ok, mssql} = DBConnection.start_link(Tds.Protocol, pool_size: 1)
+      %{mysql: mysql, mssql: mssql}
+    end
+
+    test "dialect/1 maps MyXQL.Connection to MySQL and Tds.Protocol to MSSQL", ctx do
+      assert dialect(ctx.mysql) == MySQL
+      assert dialect(ctx.mssql) == MSSQL
+    end
+
+    test "the MyXQL path calls MyXQL.query/4 with the rendered params unchanged", ctx do
+      assert query(ctx.mysql, ~q"a = #{1} AND b IN #{list([2, 3])}", timeout: 5) ==
+               {:fake_query, MyXQL, ctx.mysql, "a = ? AND b IN (?, ?)", [1, 2, 3], timeout: 5}
+    end
+
+    test "the Tds path wraps each param in a Tds.Parameter named after its placeholder", ctx do
+      assert query(ctx.mssql, ~q"a = #{1} AND b IN #{list([2, 3])}", timeout: 5) ==
+               {:fake_query, Tds, ctx.mssql, "a = @1 AND b IN (@2, @3)",
+                [
+                  %Tds.Parameter{name: "@1", value: 1},
+                  %Tds.Parameter{name: "@2", value: 2},
+                  %Tds.Parameter{name: "@3", value: 3}
+                ], timeout: 5}
     end
   end
 end

@@ -6,13 +6,13 @@
 
 **Blocked by:** 05 (Execute through Postgres and SQLite connections).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `dialect/1` maps `MyXQL.Connection` to `PlainSQL.Dialect.MySQL` and `Tds.Protocol` to `PlainSQL.Dialect.MSSQL`.
-- [ ] The MyXQL path calls `MyXQL.query(conn, sql, params, opts)` with the rendered params unchanged.
-- [ ] The Tds path calls `Tds.query(conn, sql, params, opts)` with `params` as a list of `Tds.Parameter` structs. Struct `n` has `name: "@#{n}"` and `value: v` in list order.
-- [ ] `~q"a = #{1} AND b IN #{list([2, 3])}"` on the Tds path produces three `Tds.Parameter` structs named `@1`, `@2`, `@3` with values `1`, `2`, `3`.
-- [ ] The Tds wrap is the only Driver-specific clause in `query/3`.
-- [ ] The inference table has four connection rows and is closed. A fifth connection module raises `ArgumentError`.
-- [ ] `mix compile --warnings-as-errors` is clean with `myxql` and `tds` absent from the deps.
-- [ ] The README states that MySQL and MSSQL are Rendering-tested only.
+- [x] `dialect/1` maps `MyXQL.Connection` to `PlainSQL.Dialect.MySQL` and `Tds.Protocol` to `PlainSQL.Dialect.MSSQL`.
+- [x] The MyXQL path calls `MyXQL.query(conn, sql, params, opts)` with the rendered params unchanged.
+- [x] The Tds path calls `Tds.query(conn, sql, params, opts)` with `params` as a list of `Tds.Parameter` structs. Struct `n` has `name: "@#{n}"` and `value: v` in list order.
+- [x] `~q"a = #{1} AND b IN #{list([2, 3])}"` on the Tds path produces three `Tds.Parameter` structs named `@1`, `@2`, `@3` with values `1`, `2`, `3`.
+- [x] The Tds wrap is the only Driver-specific clause in `query/3`.
+- [x] The inference table has four connection rows and is closed. A fifth connection module raises `ArgumentError`.
+- [x] `mix compile --warnings-as-errors` is clean with `myxql` and `tds` absent from the deps.
+- [x] The README states that MySQL and MSSQL are Rendering-tested only.
