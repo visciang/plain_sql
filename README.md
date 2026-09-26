@@ -1,8 +1,8 @@
 # PlainSQL
 
-An Elixir library for writing SQL as SQL. The developer writes SQL text in the `~q` sigil. A Fragment in `#{}` splices. Any other value in `#{}` binds. `render/2` returns the SQL string and the ordered value list for one Dialect.
+An Elixir library for writing SQL as SQL. The developer writes the SQL text and puts each value in `#{}`. PlainSQL keeps the values out of the text, renders one placeholder per value in the style of the target database, and returns the SQL string with the ordered value list.
 
-PlainSQL does not parse SQL. PlainSQL does not contain a Driver.
+PlainSQL does not parse SQL. PlainSQL does not send queries to a database on its own.
 
 ## Installation
 
@@ -18,13 +18,13 @@ end
 
 ## Usage
 
+Write the SQL in the `~q` sigil. Put each value in `#{}`. Call `render/2` with the module for the target database.
+
 ```elixir
 import PlainSQL
 
 status = "open"
-cond_ = ~q"status = #{status}"
-
-query = ~q"SELECT * FROM orders WHERE #{cond_} AND total > #{10}"
+query = ~q"SELECT * FROM orders WHERE status = #{status} AND total > #{10}"
 
 render(query, PlainSQL.Dialect.Postgres)
 #=> {"SELECT * FROM orders WHERE status = $1 AND total > $2", ["open", 10]}
@@ -33,9 +33,28 @@ render(query, PlainSQL.Dialect.SQLite)
 #=> {"SELECT * FROM orders WHERE status = ? AND total > ?", ["open", 10]}
 ```
 
-A `%PlainSQL.Fragment{}` in `#{}` splices its text and its Bindings at that position. Any other value binds as one placeholder. The sigil never converts a value. The Driver decides the encoding.
+Four terms describe this example:
+
+- A **Fragment** is a piece of SQL text together with the values bound inside it. `~q` builds a `%PlainSQL.Fragment{}`. A complete query is a Fragment.
+- A **Binding** is a value placed in `#{}`. `render/2` emits a placeholder for it, never its text. The sigil never converts a value.
+- A **Dialect** is the rendering rules for one SQL variant. It decides the placeholder style: `$1` for Postgres, `?` for SQLite. The [Portability](#portability) section lists the shipped Dialects.
+- A **Driver** is the library that sends the rendered query to the database, for example Postgrex or Exqlite. The Driver decides the encoding of each value.
+
+A Fragment in `#{}` **splices**. Its text and its Bindings enter the outer Fragment at that position. Any other value in `#{}` binds as one placeholder.
+
+```elixir
+cond_ = ~q"status = #{status}"
+query = ~q"SELECT * FROM orders WHERE #{cond_} AND total > #{10}"
+
+render(query, PlainSQL.Dialect.Postgres)
+#=> {"SELECT * FROM orders WHERE status = $1 AND total > $2", ["open", 10]}
+```
+
+Splicing is the base of every helper in the next section.
 
 ## Composition
+
+A Fragment with no text and no Bindings is the **Empty Fragment**. `~q""` is the Empty Fragment. Splicing the Empty Fragment adds nothing. An optional clause that is absent has this value.
 
 `all/1` and `any/1` compose optional predicates. `where/1` and `having/1` add the clause keyword. Every helper treats `nil`, `false`, and the Empty Fragment as absent. `all/1` and `any/1` skip an absent member. `where/1` and `having/1` render nothing for an absent argument.
 
