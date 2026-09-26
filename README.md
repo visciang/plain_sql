@@ -40,6 +40,9 @@ A `%PlainSQL.Fragment{}` in `#{}` splices its text and its Bindings at that posi
 `all/1`, `any/1`, and `where/1` compose optional predicates. `all/1` and `any/1` skip `nil`, `false`, and the Empty Fragment. `where/1` renders nothing for the Empty Fragment.
 
 ```elixir
+status = "open"
+ids = [1, 2]
+
 conds = all([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
 render(~q"SELECT * FROM orders #{where(conds)}", PlainSQL.Dialect.Postgres)
 #=> {"SELECT * FROM orders WHERE (status = $1) AND (id IN ($2, $3))", ["open", 1, 2]}
@@ -48,6 +51,10 @@ render(~q"SELECT * FROM orders #{where(conds)}", PlainSQL.Dialect.Postgres)
 `identifier/1` quotes a name for the Dialect. `join/2` places a separator between Fragments. `list/1` renders one placeholder per element inside parentheses.
 
 ```elixir
+table = "orders"
+names = ["id", "status"]
+values = [1, "open"]
+
 cols = join(Enum.map(names, &identifier/1), ~q", ")
 render(~q"INSERT INTO #{identifier(table)} (#{cols}) VALUES #{list(values)}", PlainSQL.Dialect.MySQL)
 #=> {"INSERT INTO `orders` (`id`, `status`) VALUES (?, ?)", [1, "open"]}
@@ -60,6 +67,9 @@ render(~q"INSERT INTO #{identifier(table)} (#{cols}) VALUES #{list(values)}", Pl
 `query/3` infers the Dialect from a live connection, renders the Fragment, and calls the Driver. The Driver result comes back untouched. `opts` reaches the Driver unchanged.
 
 ```elixir
+ids = [1, 2]
+id = 1
+
 {:ok, conn} = Postgrex.start_link(hostname: "localhost", username: "postgres", database: "app")
 PlainSQL.query(conn, ~q"SELECT * FROM orders WHERE id IN #{list(ids)}")
 #=> {:ok, %Postgrex.Result{...}}
@@ -72,6 +82,8 @@ PlainSQL.query(conn, ~q"SELECT * FROM orders WHERE id = #{id}", timeout: 1_000)
 `dialect/1` returns the Dialect module alone. Use it with a Driver function that `query/3` does not cover.
 
 ```elixir
+fragment = ~q"SELECT * FROM orders WHERE id = #{id}"
+
 {sql, params} = render(fragment, PlainSQL.dialect(conn))
 Postgrex.stream(conn, sql, params)
 ```
@@ -92,6 +104,8 @@ Postgrex.stream(conn, sql, params)
 `query/3` and `dialect/1` accept an Ecto repo module. An atom that exports `__adapter__/0` is a repo. Every other value is a connection. A repo pid is not a repo.
 
 ```elixir
+id = 1
+
 PlainSQL.query(MyApp.Repo, ~q"SELECT * FROM orders WHERE id = #{id}")
 #=> {:ok, %Postgrex.Result{...}}
 ```
