@@ -56,13 +56,13 @@ Splicing is the base of every helper in the next section.
 
 A Fragment with no text and no Bindings is the **Empty Fragment**. `~q""` is the Empty Fragment. Splicing the Empty Fragment adds nothing. An optional clause that is absent has this value.
 
-`all/1` and `any/1` compose optional predicates. `where/1` and `having/1` add the clause keyword. Every helper treats `nil`, `false`, and the Empty Fragment as absent. `all/1` and `any/1` skip an absent member. `where/1` and `having/1` render nothing for an absent argument.
+`and_/1` and `or_/1` compose optional predicates. `where/1` and `having/1` add the clause keyword. Every helper treats `nil`, `false`, and the Empty Fragment as absent. `and_/1` and `or_/1` skip an absent member. `where/1` and `having/1` render nothing for an absent argument.
 
 ```elixir
 status = "open"
 ids = [1, 2]
 
-conds = all([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
+conds = and_([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
 render(~q"SELECT * FROM orders #{where(conds)}", PlainSQL.Dialect.Postgres)
 #=> {"SELECT * FROM orders WHERE (status = $1) AND (id IN ($2, $3))", ["open", 1, 2]}
 ```

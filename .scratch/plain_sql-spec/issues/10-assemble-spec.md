@@ -31,6 +31,6 @@ Sections, in the order the question lists: purpose and portability statement; pu
 
 Verification:
 
-- Every public symbol traces to a resolved ticket. The appendix table holds the mapping: `sigil_q/2` (03, 08), `Fragment` (02, 05, 09), `all/1` `any/1` `where/1` `list/1` (02), `join/2` `identifier/1` `raw/1` (09), `render/2` (05), `Dialect` behaviour and four modules (04, 05), `dialect/1` `query/3` (06, 07).
+- Every public symbol traces to a resolved ticket. The appendix table holds the mapping: `sigil_q/2` (03, 08), `Fragment` (02, 05, 09), `and_/1` `or_/1` `where/1` `list/1` (02), `join/2` `identifier/1` `raw/1` (09), `render/2` (05), `Dialect` behaviour and four modules (04, 05), `dialect/1` `query/3` (06, 07).
 - Terms match `CONTEXT.md`. A grep for the avoided words (interpolation, escaping, nesting, concatenation, embedding, adapter, backend, flavour, serialisation, snippet, unsafe) finds only the Ecto identifiers `__adapter__/0` and `Ecto.Adapters.*`, the Elixir delimiter escape, and "embedded delimiter" as ticket 04 and 05 name it.
 - One claim from the tickets was not carried: "Postgres and SQLite tests run against a live database". Ticket 05 fixes only that MySQL and MSSQL tests are Rendering-only. The test strategy stays an open item.

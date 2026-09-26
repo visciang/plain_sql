@@ -83,7 +83,9 @@ Modifiers: none in v1. See section 4.
 
 Boundary rule: a helper takes Fragments or values, emits text at its own Splicing position, and never reads the text around it.
 
-Skip rule: a helper argument that is `nil`, `false`, or the Empty Fragment is absent. A list helper (`join/2`, `all/1`, `any/1`, `group_by/1`, `order_by/1`, `set/1`) skips an absent member. A unary helper (`where/1`, `having/1`) treats an absent argument as the Empty Fragment. `empty?/1` returns `true` for an absent argument.
+Naming rule: a helper that emits a SQL keyword is named after that keyword. `and_/1` and `or_/1` carry a trailing underscore because `and` and `or` are Elixir operators.
+
+Skip rule: a helper argument that is `nil`, `false`, or the Empty Fragment is absent. A list helper (`join/2`, `and_/1`, `or_/1`, `group_by/1`, `order_by/1`, `set/1`) skips an absent member. A unary helper (`where/1`, `having/1`) treats an absent argument as the Empty Fragment. `empty?/1` returns `true` for an absent argument.
 
 Argument rule: every helper raises `ArgumentError` at the call for an argument or a member that is not a Fragment, `nil`, or `false`. A list helper raises `ArgumentError` at the call for a `fragments` argument that is not a list.
 
@@ -96,14 +98,14 @@ Argument rule: every helper raises `ArgumentError` at the call for an argument o
 - Takes a list of Fragments and a separator Fragment. Raises `ArgumentError` at the call for a separator that is not a Fragment.
 - Renders the remaining members in order with the separator between them.
 - Renders the Empty Fragment when no member remains.
-- `join/2` is the primitive under `all/1`, `any/1`, `group_by/1`, `order_by/1`, and `set/1`.
+- `join/2` is the primitive under `and_/1`, `or_/1`, `group_by/1`, `order_by/1`, and `set/1`.
 
-`all(fragments)`
+`and_(fragments)`
 
 - Joins the remaining members with ` AND `. Wraps every member in parentheses, also a single member.
 - Renders the Empty Fragment when no member remains.
 
-`any(fragments)`
+`or_(fragments)`
 
 - Joins the remaining members with ` OR `. Wraps every member in parentheses, also a single member.
 - Raises `ArgumentError` when no member remains. The identity of `OR` is `FALSE`. MSSQL has no boolean literal. No portable literal exists.
@@ -162,7 +164,7 @@ No negation helper. The developer writes `~q"NOT (#{pred})"`.
 Idioms:
 
 ```elixir
-conds = all([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
+conds = and_([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
 ~q"SELECT * FROM orders #{where(conds)}"
 
 cols = join(Enum.map(names, &identifier/1), ~q", ")
@@ -209,7 +211,7 @@ Every error PlainSQL raises is an `ArgumentError`. Message text is not fixed by 
 |---|---|
 | Any modifier on `~q` | compile time |
 | Empty `#{}` in `~q` | compile time |
-| `any/1` or `set/1` with no remaining member | call |
+| `or_/1` or `set/1` with no remaining member | call |
 | `list/1` with an empty list | call |
 | `identifier/1` with a non-binary or `""` | call |
 | `raw/1` with a non-binary | call |
@@ -356,7 +358,7 @@ These items are not fixed by this spec. The implementation effort decides them.
 |---|---|
 | `PlainSQL.sigil_q/2` | [03](../.scratch/plain_sql-spec/issues/03-sigil-and-binding-rule.md), [08](../.scratch/plain_sql-spec/issues/08-compile-time-checks.md) |
 | `PlainSQL.Fragment` struct and `part` type | [02](../.scratch/plain_sql-spec/issues/02-composition-model.md), [05](../.scratch/plain_sql-spec/issues/05-dialect-contract.md), [09](../.scratch/plain_sql-spec/issues/09-identifier-and-raw.md) |
-| `PlainSQL.all/1`, `any/1`, `where/1`, `list/1` | [02](../.scratch/plain_sql-spec/issues/02-composition-model.md) |
+| `PlainSQL.and_/1`, `or_/1`, `where/1`, `list/1` | [02](../.scratch/plain_sql-spec/issues/02-composition-model.md) |
 | `PlainSQL.empty?/1`, `having/1`, `group_by/1`, `order_by/1`, `set/1`, skip rule on unary helpers | grilling 2026-09-26, [implementation ticket 08](../.scratch/plain_sql-implementation/issues/08-compose-optional-clauses.md) |
 | `PlainSQL.join/2`, `identifier/1`, `raw/1` | [09](../.scratch/plain_sql-spec/issues/09-identifier-and-raw.md) |
 | `PlainSQL.render/2` | [05](../.scratch/plain_sql-spec/issues/05-dialect-contract.md) |

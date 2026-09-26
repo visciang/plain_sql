@@ -141,63 +141,63 @@ defmodule PlainSQL.HelpersTest do
     end
   end
 
-  describe "all/1" do
+  describe "and_/1" do
     test "joins the members with AND and wraps each in parentheses" do
-      assert render(all([~q"a = #{1}", ~q"b = #{2}"]), Postgres) ==
+      assert render(and_([~q"a = #{1}", ~q"b = #{2}"]), Postgres) ==
                {"(a = $1) AND (b = $2)", [1, 2]}
     end
 
     test "wraps a single remaining member in parentheses" do
-      assert render(all([nil, ~q"a = #{1}"]), Postgres) == {"(a = $1)", [1]}
+      assert render(and_([nil, ~q"a = #{1}"]), Postgres) == {"(a = $1)", [1]}
     end
 
     test "skips nil, false, and the Empty Fragment" do
-      assert render(all([nil, ~q"a", false, ~q"", ~q"b"]), Postgres) == {"(a) AND (b)", []}
+      assert render(and_([nil, ~q"a", false, ~q"", ~q"b"]), Postgres) == {"(a) AND (b)", []}
     end
 
     test "renders the Empty Fragment when no member remains" do
-      assert all([]) == @empty
-      assert all([nil, false, ~q""]) == @empty
+      assert and_([]) == @empty
+      assert and_([nil, false, ~q""]) == @empty
     end
 
     test "raises ArgumentError for a member that is not a Fragment, nil, or false" do
-      assert_raise ArgumentError, fn -> all([~q"a", "b"]) end
+      assert_raise ArgumentError, fn -> and_([~q"a", "b"]) end
     end
 
     test "raises ArgumentError for a fragments argument that is not a list" do
-      assert_raise ArgumentError, fn -> apply(PlainSQL, :all, [~q"a"]) end
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :and_, [~q"a"]) end
     end
   end
 
-  describe "any/1" do
+  describe "or_/1" do
     test "joins the members with OR and wraps each in parentheses" do
-      assert render(any([~q"a = #{1}", ~q"b = #{2}"]), Postgres) ==
+      assert render(or_([~q"a = #{1}", ~q"b = #{2}"]), Postgres) ==
                {"(a = $1) OR (b = $2)", [1, 2]}
     end
 
     test "wraps a single remaining member in parentheses" do
-      assert render(any([false, ~q"a = #{1}"]), Postgres) == {"(a = $1)", [1]}
+      assert render(or_([false, ~q"a = #{1}"]), Postgres) == {"(a = $1)", [1]}
     end
 
     test "skips nil, false, and the Empty Fragment" do
-      assert render(any([nil, ~q"a", false, ~q"", ~q"b"]), Postgres) == {"(a) OR (b)", []}
+      assert render(or_([nil, ~q"a", false, ~q"", ~q"b"]), Postgres) == {"(a) OR (b)", []}
     end
 
     test "raises ArgumentError when no member remains" do
-      assert_raise ArgumentError, fn -> any([]) end
-      assert_raise ArgumentError, fn -> any([nil, false, ~q""]) end
+      assert_raise ArgumentError, fn -> or_([]) end
+      assert_raise ArgumentError, fn -> or_([nil, false, ~q""]) end
     end
 
     test "raises ArgumentError for a member that is not a Fragment, nil, or false" do
-      assert_raise ArgumentError, fn -> any([~q"a", "b"]) end
+      assert_raise ArgumentError, fn -> or_([~q"a", "b"]) end
     end
 
     test "raises ArgumentError for a fragments argument that is not a list" do
-      assert_raise ArgumentError, fn -> apply(PlainSQL, :any, [:a]) end
+      assert_raise ArgumentError, fn -> apply(PlainSQL, :or_, [:a]) end
     end
 
     test "nested all/any numbers Bindings in text order" do
-      fragment = all([any([~q"a = #{1}", ~q"b = #{2}"]), ~q"c = #{3}"])
+      fragment = and_([or_([~q"a = #{1}", ~q"b = #{2}"]), ~q"c = #{3}"])
 
       assert render(fragment, Postgres) == {"((a = $1) OR (b = $2)) AND (c = $3)", [1, 2, 3]}
     end
@@ -225,7 +225,7 @@ defmodule PlainSQL.HelpersTest do
 
     test "the conds idiom renders with and without the WHERE clause" do
       query = fn status, ids ->
-        conds = all([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
+        conds = and_([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
         render(~q"SELECT * FROM orders #{where(conds)}", Postgres)
       end
 
@@ -234,7 +234,7 @@ defmodule PlainSQL.HelpersTest do
 
       assert query.("open", []) == {"SELECT * FROM orders WHERE (status = $1)", ["open"]}
 
-      conds = all([nil, false])
+      conds = and_([nil, false])
 
       assert render(~q"SELECT * FROM orders #{where(conds)}", Postgres) ==
                {"SELECT * FROM orders ", []}
@@ -362,7 +362,7 @@ defmodule PlainSQL.HelpersTest do
     test "is true for the Empty Fragment, nil, and false" do
       assert empty?(~q"")
       assert empty?(raw(""))
-      assert empty?(all([]))
+      assert empty?(and_([]))
       assert empty?(nil)
       assert empty?(false)
     end

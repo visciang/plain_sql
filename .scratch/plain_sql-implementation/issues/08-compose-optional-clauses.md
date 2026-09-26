@@ -18,6 +18,6 @@ Decisions: grilling session 2026-09-26. Named siblings, not a generic prefix hel
 - [x] `set([~q"a = #{1}", nil, ~q"b = #{2}"])` renders `SET a = $1, b = $2` with params `[1, 2]`. `set([])` and `set([nil, false, ~q""])` raise `ArgumentError`.
 - [x] No member of `group_by/1`, `order_by/1`, `set/1` is wrapped in parentheses.
 - [x] `group_by/1`, `order_by/1`, `set/1` raise `ArgumentError` for a member that is not a Fragment, `nil`, or `false`.
-- [x] `join/2`, `all/1`, `any/1`, `group_by/1`, `order_by/1`, `set/1` raise `ArgumentError` for a `fragments` argument that is not a list. Added after code review.
+- [x] `join/2`, `and_/1`, `or_/1`, `group_by/1`, `order_by/1`, `set/1` raise `ArgumentError` for a `fragments` argument that is not a list. Added after code review.
 - [x] The `UPDATE` idiom of spec 2.4 renders on Postgres and executes on SQLite.
 - [x] README documents the new helpers, `~q"NOT (#{pred})"`, and the multi-row `VALUES` idiom.

@@ -150,8 +150,8 @@ defmodule PlainSQL do
   Raises `ArgumentError` for a `fragments` that is not a list and for a member that is not
   a Fragment, `nil`, or `false`.
   """
-  @spec all([Fragment.t() | nil | false]) :: Fragment.t()
-  def all(fragments), do: join_predicates(fragments, " AND ")
+  @spec and_([Fragment.t() | nil | false]) :: Fragment.t()
+  def and_(fragments), do: join_predicates(fragments, " AND ")
 
   @doc """
   Joins the predicates in `fragments` with ` OR `.
@@ -163,10 +163,10 @@ defmodule PlainSQL do
   portable literal for `FALSE` exists. Raises `ArgumentError` for a `fragments` that is
   not a list and for a member that is not a Fragment, `nil`, or `false`.
   """
-  @spec any([Fragment.t() | nil | false]) :: Fragment.t()
-  def any(fragments) do
+  @spec or_([Fragment.t() | nil | false]) :: Fragment.t()
+  def or_(fragments) do
     case join_predicates(fragments, " OR ") do
-      %Fragment{parts: []} -> raise ArgumentError, "any/1 needs at least one predicate"
+      %Fragment{parts: []} -> raise ArgumentError, "or_/1 needs at least one predicate"
       fragment -> fragment
     end
   end

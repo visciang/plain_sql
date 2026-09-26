@@ -89,7 +89,7 @@ Rejected: the close delimiter only. One rule for every Dialect is simpler, and a
 
 ### Public module layout
 
-- `PlainSQL`: `sigil_q/2`, `all/1`, `any/1`, `where/1`, `list/1`, `render/2`. The developer writes `import PlainSQL`.
+- `PlainSQL`: `sigil_q/2`, `and_/1`, `or_/1`, `where/1`, `list/1`, `render/2`. The developer writes `import PlainSQL`.
 - `PlainSQL.Fragment`: the struct only. `@type part :: {:text, String.t()} | {:binding, term()} | {:list, [term()]}`. Ticket 09 may add a part type.
 - `PlainSQL.Dialect`: the behaviour and the four implementations under it.
 

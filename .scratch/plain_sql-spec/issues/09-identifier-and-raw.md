@@ -57,10 +57,10 @@ A plain string in `#{}` never splices as SQL text. Settled by [Sigil name and th
 `join/2` in `PlainSQL`. It covers identifier lists and every other list of Fragments.
 
 - Takes a list of Fragments and a separator Fragment. Renders the members in order with the separator between them.
-- Skips members that are `nil`, `false`, or the Empty Fragment. Same rule as `all/1`.
+- Skips members that are `nil`, `false`, or the Empty Fragment. Same rule as `and_/1`.
 - Renders the Empty Fragment when no member remains.
 - A member that is not a Fragment, `nil`, or `false` raises `ArgumentError`. `list/1` is the helper for values.
-- `all/1` is `join/2` with ` AND ` plus parentheses around each member. `any/1` is the same with ` OR ` plus the raise on an empty result.
+- `and_/1` is `join/2` with ` AND ` plus parentheses around each member. `or_/1` is the same with ` OR ` plus the raise on an empty result.
 
 Column list idiom:
 
@@ -69,7 +69,7 @@ cols = join(Enum.map(names, &identifier/1), ~q", ")
 ~q"INSERT INTO #{identifier(table)} (#{cols}) VALUES #{list(values)}"
 ```
 
-Rejected: `identifiers/1`. It serves one list case. `join/2` serves every list case and is the primitive under `all/1` and `any/1`. Rejected: no helper. Reducing with Splicing is the same code in every project. Rejected: verbatim `join/2` that keeps the separator of an Empty Fragment member. `a, , b` is never the wanted text.
+Rejected: `identifiers/1`. It serves one list case. `join/2` serves every list case and is the primitive under `and_/1` and `or_/1`. Rejected: no helper. Reducing with Splicing is the same code in every project. Rejected: verbatim `join/2` that keeps the separator of an Empty Fragment member. `a, , b` is never the wanted text.
 
 ### Effects on the map
 

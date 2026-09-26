@@ -44,7 +44,7 @@ Decided 2026-09-26 from the prototype. Prototype: branch `prototype/sigil`, file
 1. Sigil: `~q`. Rejected: `~p` (Phoenix collision), `~SQL` (no native `#{}`, needs a custom marker).
 2. Binding rule: at runtime, by struct match. A `%PlainSQL.Fragment{}` inside `#{}` splices. Any other value binds as one `{:binding, value}` part. There is no compile-time rule by AST shape. Rejected: a compile-time fast path for an inline `~q`. It adds a second rule for the same behaviour.
 3. Modifiers: none in v1. The macro raises `CompileError` on any modifier. Rejected: a Dialect hint modifier. The Dialect is chosen at Rendering.
-4. The macro drops `{:text, ""}` parts. The Empty Fragment is `%PlainSQL.Fragment{parts: []}`. `all/1` tests `parts == []`.
+4. The macro drops `{:text, ""}` parts. The Empty Fragment is `%PlainSQL.Fragment{parts: []}`. `and_/1` tests `parts == []`.
 5. Text rule for the spec: the sigil text is verbatim. The only transform is the delimiter escape. The heredoc form `~q"""` is the documented form for multi-line SQL.
 6. Values: the sigil never converts a value. `%Date{}`, `%Decimal{}`, a list, a map bind as one value. The Driver decides the encoding. Only `%PlainSQL.Fragment{}` is special to the sigil.
 

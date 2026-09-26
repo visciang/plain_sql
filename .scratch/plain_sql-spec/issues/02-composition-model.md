@@ -44,16 +44,18 @@ Rejected: numbered placeholders in the stored text with renumbering at Splicing 
 
 ### Helpers in the core
 
-`all/1`
+Renamed 2026-09-26: `all/1` → `and_/1`, `any/1` → `or_/1`. The old names read as `Enum.all?/1` and `Enum.any?/1` in Elixir and collide with the SQL keywords `ALL` and `ANY` (`id = ANY($1)`). Every clause helper is named after the SQL keyword it emits. `and` and `or` are Elixir operators and do not parse as function calls. Rejected: `all_of/1`, `any_of/1` (keeps the SQL collision); `conjunction/1`, `disjunction/1` (long).
+
+`and_/1`
 
 - Takes a list. Joins the members with ` AND `.
 - Wraps every member in parentheses, also a single member.
 - Skips members that are `nil`, `false`, or the empty Fragment.
 - Renders the empty Fragment when no member remains. The identity of `AND` is `TRUE`; in a `WHERE` this means no filter.
 
-`any/1`
+`or_/1`
 
-- Same as `all/1` with ` OR `.
+- Same as `and_/1` with ` OR `.
 - Raises `ArgumentError` when no member remains. The identity of `OR` is `FALSE`. The empty Fragment would select every row. MSSQL has no boolean literal, so no portable literal exists.
 
 `where/1`
@@ -74,7 +76,7 @@ Rejected: automatic expansion of a list value by inspection of the text before `
 Idiom for an optional filter:
 
 ```elixir
-conds = all([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
+conds = and_([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
 ~q"SELECT * FROM orders #{where(conds)}"
 ```
 
