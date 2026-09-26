@@ -16,6 +16,10 @@ _Avoid_: Interpolation, escaping, parameterisation
 The act of placing a Fragment inside another Fragment. The inner text joins the outer text and the inner bindings join the outer bindings.
 _Avoid_: Embedding, nesting, concatenation
 
+**Empty Fragment**:
+A Fragment with no text and no bindings. Splicing it changes nothing. It is the value of an optional clause that is absent.
+_Avoid_: Nil fragment, blank, no-op
+
 **Dialect**:
 The rendering rules for one SQL variant. A Dialect decides how bindings and identifiers appear in the rendered text. A Dialect does not change what the SQL says.
 _Avoid_: Adapter, backend, flavour

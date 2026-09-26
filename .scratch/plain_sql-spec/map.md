@@ -28,11 +28,11 @@ A design spec for `plain_sql`, an Elixir library that lets a developer write SQL
 
 - [Prior art survey: composable SQL-as-text libraries](issues/01-prior-art-survey.md): text-based libraries order Bindings by text position, treat the empty Fragment as first-class, change SQL text per Dialect only for `IN`, and none promises one SQL text runs everywhere.
 - [Dialect inference from a connection or repo](issues/06-dialect-inference.md): yes, through `DBConnection.connection_module/1` and `repo.__adapter__/0`; PlainSQL owns the module-to-Dialect table; no Driver accepts a `{sql, params}` tuple.
+- [Composition model: Splicing semantics and clause helpers](issues/02-composition-model.md): a Fragment is a parts list numbered at Rendering; Splicing is verbatim list concatenation; helpers `all/1`, `any/1`, `where/1`, `list/1`; a helper never reads the text around it.
 
 ## Not yet specified
 
-- Named bindings (`:id`) versus positional bindings, and whether a Fragment may bind the same value twice.
-- List and array values: where `IN` expansion ends and Driver type encoding begins (Postgres arrays, JSON).
+- Named bindings (`:id`) versus positional bindings.
 - Dialect-specific Fragments: whether a Fragment can declare "Postgres only" and what Rendering does for another Dialect.
 - Test strategy for Rendering per Dialect (golden files, property tests over Splicing).
 - Ecto interop: a Fragment inside `Repo.query/2`, and whether an Ecto `fragment/1` bridge is wanted.
@@ -49,3 +49,4 @@ A design spec for `plain_sql`, an Elixir library that lets a developer write SQL
 - Migrations.
 - SQL transpiling: rewriting `LIMIT`/`TOP`, `RETURNING`, upsert, boolean literals, or any SQL text between Dialects. A Dialect changes how values and identifiers are bound, never what the SQL says.
 - Forking or contributing to elixir-dbvisor/sql.
+- `INSERT` and `UPDATE SET` builders from a map, and dynamic `ORDER BY` builders. Ruled out by the boundary rule of [Composition model](issues/02-composition-model.md): a helper never reads the text around it.

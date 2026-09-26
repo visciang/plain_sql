@@ -16,6 +16,8 @@ Settle:
 2. The exact statement text for the README.
 3. What Rendering does when a Fragment uses a construct the target Dialect cannot bind (for example a Postgres array value under SQLite): error, pass-through, or Dialect-defined.
 
+Input from [Composition model](02-composition-model.md): `list/1` produces a `{:list, values}` part. This ticket decides its rendered text per Dialect (`($1, $2, $3)` versus `= ANY($1)`). A bare list value is one `{:binding, list}` part; item 3 covers the Dialect that cannot bind it.
+
 ## Blocks
 
 05, 10
