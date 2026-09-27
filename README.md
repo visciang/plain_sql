@@ -218,11 +218,7 @@ Tds.query(conn, sql, params)
 
 PlainSQL has no dependency. The application adds the Driver to its own deps.
 
-Postgres and SQLite are the reference Dialects. The test suite executes rendered SQL against both through Postgrex and Exqlite. MySQL and MSSQL are Rendering-tested only. No MySQL or MSSQL database runs in the test suite.
-
-### Tests
-
-`mix test` runs the SQLite tests on an in-memory database. The Postgres tests run only when `PG_URL` is set. `make db-up` starts a Postgres container and prints the `PG_URL` to export. `make db-down` stops it.
+Every Dialect is Rendering-tested. The test suite executes rendered SQL on an in-memory SQLite database through Exqlite. No other database runs in the test suite.
 
 ## Design
 

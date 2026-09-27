@@ -59,7 +59,6 @@ defmodule PlainSQL.MixProject do
 
   defp deps do
     [
-      {:postgrex, "~> 0.22", only: :test},
       {:exqlite, "~> 0.41", only: :test},
       {:excoveralls, "~> 0.18", only: :test},
       {:dialyxir, "~> 1.4", only: :test, runtime: false},

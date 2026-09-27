@@ -243,7 +243,7 @@ Two Rendering rules are core, not callbacks. They are the `{:list, values}` expa
 | `PlainSQL.Dialect.MySQL` | `"?"` | ``{"`", "`"}`` |
 | `PlainSQL.Dialect.MSSQL` | `"@#{n}"` | `{"[", "]"}` |
 
-Postgres and SQLite are the reference Dialects. MySQL and MSSQL tests are Rendering-only. No MySQL or MSSQL database runs in the test suite.
+Every Dialect is Rendering-tested. The test suite executes rendered SQL on an in-memory SQLite database. No other database runs in the test suite.
 
 ### 3.3 Adding a Dialect
 
@@ -294,7 +294,7 @@ The README documents the replacement: one application module that fixes the Dial
 
 ### 5.1 Packaging
 
-One package. `lib/` has no dependency. `make check-no-deps` verifies it. Drivers appear only in the test deps and the README.
+One package. `lib/` has no dependency. Drivers appear only in the test deps and the README.
 
 ## 6. Out of scope
 

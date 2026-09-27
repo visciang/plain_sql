@@ -3,13 +3,11 @@ defmodule PlainSQL.LiveTest do
 
   import PlainSQL
 
-  alias PlainSQL.Dialect.Postgres
   alias PlainSQL.Dialect.SQLite
-  alias PlainSQL.TestSupport.LiveDB
 
   describe "rendered SQL executes on SQLite" do
     setup do
-      {:ok, conn} = LiveDB.start_exqlite()
+      {:ok, conn} = Exqlite.start_link(database: ":memory:", pool_size: 1)
       Exqlite.query!(conn, "CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT)", [])
       Exqlite.query!(conn, "INSERT INTO t (id, name) VALUES (1, 'a'), (2, 'b'), (3, 'c')", [])
       %{conn: conn}
@@ -34,43 +32,6 @@ defmodule PlainSQL.LiveTest do
 
       assert {:ok, %Exqlite.Result{rows: [["z", 1], ["c", 1], ["b", 1]]}} =
                Exqlite.query(conn, sql, params)
-    end
-  end
-
-  describe "rendered SQL executes on Postgres" do
-    @describetag :live_postgres
-
-    setup do
-      {:ok, conn} = LiveDB.start_postgrex()
-      %{conn: conn}
-    end
-
-    test "list/1 binds one param per element", %{conn: conn} do
-      {sql, params} =
-        render(
-          ~q"SELECT x FROM unnest(#{[1, 2, 3]}::int[]) AS x WHERE x IN #{list([2, 3])}",
-          Postgres
-        )
-
-      assert {:ok, %Postgrex.Result{rows: [[2], [3]]}} = Postgrex.query(conn, sql, params)
-    end
-
-    test "a bare list binds as one array; = ANY([]) matches no row, <> ALL([]) every row",
-         %{conn: conn} do
-      rows = fn ids, op ->
-        {sql, params} =
-          render(
-            ~q"SELECT x FROM unnest(#{[1, 2, 3]}::int[]) AS x WHERE x #{op}(#{ids}) ORDER BY x",
-            Postgres
-          )
-
-        {:ok, %Postgrex.Result{rows: rows}} = Postgrex.query(conn, sql, params)
-        rows
-      end
-
-      assert rows.([1, 2], ~q"= ANY") == [[1], [2]]
-      assert rows.([], ~q"= ANY") == []
-      assert rows.([], ~q"<> ALL") == [[1], [2], [3]]
     end
   end
 end

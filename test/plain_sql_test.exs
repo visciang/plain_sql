@@ -38,7 +38,7 @@ defmodule PlainSQLTest do
     end
 
     test "binds every non-Fragment value unchanged" do
-      values = ["text", [1, 2], %{a: 1}, nil, ~D[2026-09-26], Decimal.new("1.50")]
+      values = ["text", [1, 2], %{a: 1}, nil, ~D[2026-09-26], ~U[2026-09-26 10:00:00Z]]
 
       for value <- values do
         assert render(~q"SELECT #{value}", Postgres) == {"SELECT $1", [value]}
