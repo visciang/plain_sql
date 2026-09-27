@@ -101,5 +101,16 @@ Analysis 2026-09-27:
 | 5 | accept | Installation: Git form |
 | 6 | accept | Execution: Exqlite example |
 | 7 | accept | Usage: `~q` attribute vs String attribute |
+| 8 | accept | Installation: `github:` form |
 
 All accepted changes are README edits. No API or spec change.
+
+Correction 2026-09-27, entry 1 analysis: `@callable_ceiling` in `NextNumber.Store.CalledNumber` is a String. It holds `"(SELECT COALESCE(MAX(number), 0) FROM orders WHERE service_id = :service_id)"`. It splices into two statements. The recount is twelve SQL String attributes. Four splice into other statements. The decision of entry 1 does not change.
+
+## 8. The README Git form needs an SSH key
+
+Evidence: the README gives `git: "git@github.com:visciang/plain_sql.git"`. Without an SSH key, `git ls-remote` on that URL fails with "Please make sure you have the correct access rights". The repository is public. An anonymous `git ls-remote` on the HTTPS URL returns `refs/tags/v0.1.0`. A CI runner or a Docker builder has no SSH key.
+
+Candidate: the README gives `{:plain_sql, github: "visciang/plain_sql", tag: "v0.1.0"}`. The `github:` option gives the HTTPS URL.
+
+Decision 2026-09-27: accepted. The README uses the `github:` form.

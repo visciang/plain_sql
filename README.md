@@ -16,7 +16,7 @@ The package is not on Hex. Add the Git dependency to `mix.exs`:
 ```elixir
 def deps do
   [
-    {:plain_sql, git: "git@github.com:visciang/plain_sql.git", tag: "v0.1.0"}
+    {:plain_sql, github: "visciang/plain_sql", tag: "v0.1.0"}
   ]
 end
 ```
