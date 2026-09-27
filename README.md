@@ -38,8 +38,6 @@ render(query, PlainSQL.Dialect.SQLite)
 #=> {"SELECT * FROM orders WHERE status = ? AND total > ?", ["open", 10]}
 ```
 
-`import PlainSQL` brings `list/1`, `where/1`, `set/1`, `join/2`, and `raw/1` into the module. A module that defines and calls a local function with one of these names fails to compile. Write `import PlainSQL, except: [list: 1]` and call `PlainSQL.list/1` by its full name.
-
 Four terms describe this example:
 
 - A **Fragment** is a piece of SQL text together with the values bound inside it. `~q` builds a `%PlainSQL.Fragment{}`. A complete query is a Fragment.

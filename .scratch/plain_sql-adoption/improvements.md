@@ -31,6 +31,7 @@ Analysis 2026-09-27:
 - Correction, verified: the compile stops only when the module defines `list/1` and also calls `list(...)` unqualified. A module that defines `list/1` and never calls `list/1` compiles. `NextNumber.Store.Catalogues.list/1` has no `IN` predicate today, so it compiles as is.
 - `import PlainSQL, except: [list: 1]` plus `PlainSQL.list(ids)` at the call site compiles. This is the standard Elixir remedy. It needs no library change.
 - Recommendation: one README sentence in the Usage section. No API change. `import PlainSQL, only: [...]` in every example adds noise to every example for a case that concerns one helper name.
+- Decision 2026-09-27: no README change. An import clash with a local function is standard Elixir. The developer renames the function or restricts the import.
 
 ## 3. `values/1` helper
 
@@ -93,7 +94,7 @@ Analysis 2026-09-27:
 | Entry | Decision | Change |
 |---|---|---|
 | 1 | README only, no warning | with 7 |
-| 2 | README sentence | Usage section |
+| 2 | none | none |
 | 3 | defer | none |
 | 4 | none | none |
 | 5 | accept | Installation: Git form |
