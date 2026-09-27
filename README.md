@@ -11,12 +11,12 @@ PlainSQL does not send queries to a database on its own.
 
 ## Installation
 
-Add `plain_sql` to the dependencies in `mix.exs`:
+The package is not on Hex. Add the Git dependency to `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:plain_sql, "~> 0.1.0"}
+    {:plain_sql, git: "git@github.com:visciang/plain_sql.git", tag: "v0.1.0"}
   ]
 end
 ```
@@ -38,6 +38,8 @@ render(query, PlainSQL.Dialect.SQLite)
 #=> {"SELECT * FROM orders WHERE status = ? AND total > ?", ["open", 10]}
 ```
 
+`import PlainSQL` brings `list/1`, `where/1`, `set/1`, `join/2`, and `raw/1` into the module. A module that defines and calls a local function with one of these names fails to compile. Write `import PlainSQL, except: [list: 1]` and call `PlainSQL.list/1` by its full name.
+
 Four terms describe this example:
 
 - A **Fragment** is a piece of SQL text together with the values bound inside it. `~q` builds a `%PlainSQL.Fragment{}`. A complete query is a Fragment.
@@ -54,6 +56,22 @@ query = ~q"SELECT * FROM orders WHERE #{cond_} AND total > #{10}"
 render(query, PlainSQL.Dialect.Postgres)
 #=> {"SELECT * FROM orders WHERE status = $1 AND total > $2", ["open", 10]}
 ```
+
+A reusable piece of SQL text is a `~q` module attribute. A String module attribute is a value. It binds.
+
+```elixir
+@open ~q"status = 'open'"
+
+render(~q"SELECT * FROM orders WHERE #{@open} AND total > #{10}", PlainSQL.Dialect.SQLite)
+#=> {"SELECT * FROM orders WHERE status = 'open' AND total > ?", [10]}
+
+@open_text "status = 'open'"
+
+render(~q"SELECT * FROM orders WHERE #{@open_text} AND total > #{10}", PlainSQL.Dialect.SQLite)
+#=> {"SELECT * FROM orders WHERE ? AND total > ?", ["status = 'open'", 10]}
+```
+
+The second statement is valid SQL. SQLite casts the text to `0`. The query matches no row. The database reports no error.
 
 Splicing is the base of every helper in the next section.
 
@@ -214,6 +232,16 @@ The same module holds the call to `Postgrex.stream/4`, to `MyApp.Repo.query/3` f
 {sql, params} = render(fragment, PlainSQL.Dialect.MSSQL)
 params = Enum.with_index(params, fn value, i -> %Tds.Parameter{name: "@#{i + 1}", value: value} end)
 Tds.query(conn, sql, params)
+```
+
+`Exqlite.Sqlite3` has no `query` function. The application prepares, binds, fetches, and releases the statement:
+
+```elixir
+{sql, params} = render(fragment, PlainSQL.Dialect.SQLite)
+{:ok, statement} = Exqlite.Sqlite3.prepare(db, sql)
+:ok = Exqlite.Sqlite3.bind(statement, params)
+{:ok, rows} = Exqlite.Sqlite3.fetch_all(db, statement)
+:ok = Exqlite.Sqlite3.release(db, statement)
 ```
 
 PlainSQL has no dependency. The application adds the Driver to its own deps.
