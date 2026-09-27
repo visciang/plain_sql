@@ -19,6 +19,7 @@ Analysis 2026-09-27:
 - The warning contradicts spec section 4: "No check on a string literal in `#{}`. It binds as a value at runtime." and "No configuration and no strict mode." `@default "open"` in `~q"status = #{@default}"` is a correct Binding. The warning fires on it.
 - Recount of next_number: eleven SQL String attributes. Three splice into other statements: `@priced_lines` (3 sites), `@page_scope` (3 sites), `@service_select` (2 sites). `@callable_ceiling` is an integer. It binds correctly under `~q`.
 - Recommendation: reject the warning. Take the README candidate together with entry 7.
+- Decision 2026-09-27: no warning. The README documents the `~q` attribute form. A binary Binding is silent only in a value position: `SELECT #{@cols}` on every database, `WHERE #{@pred}` on SQLite and MySQL. Postgres and MSSQL raise on a text value in a boolean position. `SELECT 1 ?` and `FROM (?)` are syntax errors on every database.
 
 ## 2. Helper names conflict with local functions
 
