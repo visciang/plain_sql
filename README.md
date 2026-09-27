@@ -1,8 +1,13 @@
 # PlainSQL
 
-An Elixir library for writing SQL as SQL. The developer writes the SQL text and puts each value in `#{}`. PlainSQL keeps the values out of the text, renders one placeholder per value in the style of the target database, and returns the SQL string with the ordered value list.
+An Elixir library for writing SQL as SQL.
 
-PlainSQL does not parse SQL. PlainSQL does not send queries to a database on its own.
+The developer writes the SQL text and puts each value in `#{}`.
+
+PlainSQL keeps the values out of the text, renders one placeholder per value in the style of the target database, and returns the SQL string with the ordered value list.
+
+PlainSQL does not parse SQL.
+PlainSQL does not send queries to a database on its own.
 
 ## Installation
 
@@ -54,18 +59,47 @@ Splicing is the base of every helper in the next section.
 
 ## Composition
 
-A Fragment with no text and no Bindings is the **Empty Fragment**. `~q""` is the Empty Fragment. Splicing the Empty Fragment adds nothing. An optional clause that is absent has this value.
+A search form has optional filters. The status filter is set. The id filter may be empty. The query must include only the filters that are set.
 
-`and_/1` and `or_/1` compose optional predicates. `where/1` and `having/1` add the clause keyword. Every helper treats `nil`, `false`, and the Empty Fragment as absent. `and_/1` and `or_/1` skip an absent member. `where/1` and `having/1` render nothing for an absent argument.
+Start with `where/1`. It takes a predicate Fragment and adds the `WHERE` keyword.
 
 ```elixir
 status = "open"
-ids = [1, 2]
 
-conds = and_([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
+render(~q"SELECT * FROM orders #{where(~q"status = #{status}")}", PlainSQL.Dialect.Postgres)
+#=> {"SELECT * FROM orders WHERE status = $1", ["open"]}
+```
+
+The id filter is optional. `list/1` renders one placeholder per element inside parentheses. Write the filter as an expression that gives a Fragment or `false`:
+
+```elixir
+ids = []
+by_id = ids != [] && ~q"id IN #{list(ids)}"
+```
+
+The `if` form gives `nil` in place of `false`:
+
+```elixir
+by_id = if ids != [], do: ~q"id IN #{list(ids)}"
+```
+
+`and_/1` takes a list of predicates and joins the present ones with `AND`. It skips `nil`, `false`, and `~q""`. These three values mean **absent**. Both forms above give an absent value for `[]`.
+
+```elixir
+conds = and_([~q"status = #{status}", by_id])
 render(~q"SELECT * FROM orders #{where(conds)}", PlainSQL.Dialect.Postgres)
+#=> {"SELECT * FROM orders WHERE (status = $1)", ["open"]}
+```
+
+With `ids = [1, 2]` the same code renders both predicates:
+
+```elixir
 #=> {"SELECT * FROM orders WHERE (status = $1) AND (id IN ($2, $3))", ["open", 1, 2]}
 ```
+
+When every predicate is absent, `and_/1` returns `~q""`. This is the **Empty Fragment**. It has no text and no Bindings. Splicing it adds nothing. `where/1` renders nothing for it. The query stays valid with no filter at all.
+
+`or_/1` joins with `OR`. It raises `ArgumentError` when every predicate is absent. `having/1` is `where/1` with `HAVING`.
 
 `list([])` raises `ArgumentError`. `IN ()` is invalid SQL on every Dialect. An empty list has two possible meanings. The guard `ids != [] && ...` states "an empty list is no filter". The predicate `ids == [] && ~q"1 = 0"` states "an empty list matches no row". PlainSQL does not pick one. The developer writes the meaning.
 
@@ -80,27 +114,48 @@ render(~q"SELECT * FROM orders WHERE id = ANY(#{ids})", PlainSQL.Dialect.Postgre
 
 `ANY` and `ALL` with a subquery work on every Dialect. Splice the subquery: `~q"total > ALL (#{subquery})"`.
 
-`group_by/1`, `order_by/1`, and `set/1` take a list. They skip absent members and join the rest with `, `. `set/1` raises `ArgumentError` when no member remains. `empty?/1` returns `true` for an absent value.
+A report counts orders per status. Two parts of it are optional. A minimum count filters the groups. A second key sorts the groups by count.
+
+`group_by/1` and `order_by/1` take a list of Fragments. They skip absent members and join the rest with `, `. `having/1` takes the optional filter.
 
 ```elixir
 min = 2
-by_name = true
-note = nil
+by_count = true
 
 group = group_by([~q"status"])
 filter = having(min && ~q"count(*) > #{min}")
-order = order_by([~q"status", by_name && ~q"count(*) DESC"])
+order = order_by([~q"status", by_count && ~q"count(*) DESC"])
 render(~q"SELECT status, count(*) FROM orders #{group} #{filter} #{order}", PlainSQL.Dialect.Postgres)
 #=> {"SELECT status, count(*) FROM orders GROUP BY status HAVING count(*) > $1 ORDER BY status, count(*) DESC", [2]}
+```
+
+With `min = nil` and `by_count = false` the same code renders no `HAVING` and one sort key:
+
+```elixir
+#=> {"SELECT status, count(*) FROM orders GROUP BY status  ORDER BY status", []}
+```
+
+An `UPDATE` has the same shape. `set/1` takes a list of assignments and joins the present ones with `, `.
+
+```elixir
+note = nil
 
 assignments = set([~q"status = #{status}", note && ~q"note = #{note}"])
 render(~q"UPDATE orders #{assignments} WHERE id = #{7}", PlainSQL.Dialect.Postgres)
 #=> {"UPDATE orders SET status = $1 WHERE id = $2", ["open", 7]}
 ```
 
+`set/1` differs in one point. It raises `ArgumentError` when every assignment is absent. `UPDATE` without `SET` is invalid SQL on every Dialect.
+
+`where/1` has no such guard. `~q"DELETE FROM orders #{where(conds)}"` with every predicate absent deletes every row. `empty?/1` returns `true` for an absent value. Use it to refuse the statement:
+
+```elixir
+if empty?(conds), do: raise(ArgumentError, "DELETE needs a predicate")
+```
+
 There is no `limit/1`, `offset/1`, `returning/1`, or negation helper. Write them as text: `~q"LIMIT #{10}"`, `~q"NOT (#{pred})"`.
 
-`identifier/1` quotes a name for the Dialect. `join/2` places a separator between Fragments. `list/1` renders one placeholder per element inside parentheses.
+An `INSERT` built from a map takes the column names from the data. A name is not a value. The database does not accept a placeholder in place of a table or column name. `identifier/1` builds a Fragment with the name quoted for the Dialect. `join/2` places a separator Fragment between the members of a list.
 
 ```elixir
 table = "orders"
@@ -112,7 +167,9 @@ render(~q"INSERT INTO #{identifier(table)} (#{cols}) VALUES #{list(values)}", Pl
 #=> {"INSERT INTO `orders` (`id`, `status`) VALUES (?, ?)", [1, "open"]}
 ```
 
-A multi-row `VALUES` is `join/2` over one `list/1` per row:
+`identifier/1` always quotes. On Postgres `identifier("Users")` renders `"Users"`. That names a different table from unquoted `Users`. Postgres folds an unquoted identifier to lower case, so unquoted `Users` is the table `users`.
+
+`join/2` skips absent members, like the other list helpers. A multi-row `VALUES` is `join/2` over one `list/1` per row:
 
 ```elixir
 rows = [[1, "open"], [2, "closed"]]
@@ -121,70 +178,64 @@ render(~q"INSERT INTO orders (id, status) VALUES #{join(Enum.map(rows, &list/1),
 #=> {"INSERT INTO orders (id, status) VALUES ($1, $2), ($3, $4)", [1, "open", 2, "closed"]}
 ```
 
-`raw/1` splices SQL text known at runtime. The text renders verbatim. Never pass text derived from user input.
+SQL text held in a string at runtime, for example a query read from a configuration file, is not a Fragment. `raw/1` builds one from it. The text renders verbatim. Never pass text derived from user input.
 
 ## Execution
 
-`query/3` infers the Dialect from a live connection, renders the Fragment, and calls the Driver. The Driver result comes back untouched. `opts` reaches the Driver unchanged.
+PlainSQL renders. The Driver executes. Pass the rendered pair to the Driver function.
 
 ```elixir
 ids = [1, 2]
-id = 1
 
 {:ok, conn} = Postgrex.start_link(hostname: "localhost", username: "postgres", database: "app")
-PlainSQL.query(conn, ~q"SELECT * FROM orders WHERE id IN #{list(ids)}")
-#=> {:ok, %Postgrex.Result{...}}
-
-{:ok, conn} = Exqlite.start_link(database: "app.db")
-PlainSQL.query(conn, ~q"SELECT * FROM orders WHERE id = #{id}", timeout: 1_000)
-#=> {:ok, %Exqlite.Result{...}}
-```
-
-`dialect/1` returns the Dialect module alone. Use it with a Driver function that `query/3` does not cover.
-
-```elixir
-fragment = ~q"SELECT * FROM orders WHERE id = #{id}"
-
-{sql, params} = render(fragment, PlainSQL.dialect(conn))
-Postgrex.stream(conn, sql, params)
-```
-
-`conn` is a `DBConnection.conn()`: a pool pid, a registered name, a `{:via, _, _}` tuple, or the handle inside `DBConnection.run/3` and `DBConnection.transaction/3`. `dialect/1` raises `ArgumentError` for a value that is not a pool and for a connection module outside the table below.
-
-| Connection module | Dialect | Driver call |
-|---|---|---|
-| `Postgrex.Protocol` | `PlainSQL.Dialect.Postgres` | `Postgrex.query/4` |
-| `Exqlite.Connection` | `PlainSQL.Dialect.SQLite` | `Exqlite.query/4` |
-| `MyXQL.Connection` | `PlainSQL.Dialect.MySQL` | `MyXQL.query/4` |
-| `Tds.Protocol` | `PlainSQL.Dialect.MSSQL` | `Tds.query/4` with each param as a `Tds.Parameter` named `@n` |
-
-`db_connection` is an optional dependency. Add the Driver to the deps of the application.
-
-### Ecto repos
-
-`query/3` and `dialect/1` accept an Ecto repo module. An atom that exports `__adapter__/0` is a repo. Every other value is a connection. A repo pid is not a repo.
-
-```elixir
-id = 1
-
-PlainSQL.query(MyApp.Repo, ~q"SELECT * FROM orders WHERE id = #{id}")
+{sql, params} = render(~q"SELECT * FROM orders WHERE id IN #{list(ids)}", PlainSQL.Dialect.Postgres)
+Postgrex.query(conn, sql, params)
 #=> {:ok, %Postgrex.Result{...}}
 ```
 
-The repo path calls `repo.query(sql, params, opts)`. It honours `put_dynamic_repo/1`. `ecto_sql` is an optional dependency.
+The application pins the Dialect and the Driver in one module per database it uses:
 
-| Ecto adapter | Dialect |
-|---|---|
-| `Ecto.Adapters.Postgres` | `PlainSQL.Dialect.Postgres` |
-| `Ecto.Adapters.SQLite3` | `PlainSQL.Dialect.SQLite` |
-| `Ecto.Adapters.MyXQL` | `PlainSQL.Dialect.MySQL` |
-| `Ecto.Adapters.Tds` | `PlainSQL.Dialect.MSSQL` |
+```elixir
+defmodule MyApp.SQL do
+  import PlainSQL
 
-Postgres and SQLite are the reference Dialects. The test suite executes against both. MySQL and MSSQL are Rendering-tested only. No MySQL or MSSQL database runs in the test suite.
+  def query(conn, fragment, opts \\ []) do
+    {sql, params} = render(fragment, PlainSQL.Dialect.Postgres)
+    Postgrex.query(conn, sql, params, opts)
+  end
+end
+
+MyApp.SQL.query(conn, ~q"SELECT * FROM orders WHERE id = #{id}")
+```
+
+The same module holds the call to `Postgrex.stream/4`, to `MyApp.Repo.query/3` for an Ecto repo, or to a Driver with a param shape of its own. `Tds.query/4` takes each param as a `Tds.Parameter` named after its placeholder:
+
+```elixir
+{sql, params} = render(fragment, PlainSQL.Dialect.MSSQL)
+params = Enum.with_index(params, fn value, i -> %Tds.Parameter{name: "@#{i + 1}", value: value} end)
+Tds.query(conn, sql, params)
+```
+
+PlainSQL has no dependency. The application adds the Driver to its own deps.
+
+Postgres and SQLite are the reference Dialects. The test suite executes rendered SQL against both through Postgrex and Exqlite. MySQL and MSSQL are Rendering-tested only. No MySQL or MSSQL database runs in the test suite.
 
 ### Tests
 
 `mix test` runs the SQLite tests on an in-memory database. The Postgres tests run only when `PG_URL` is set. `make db-up` starts a Postgres container and prints the `PG_URL` to export. `make db-down` stops it.
+
+## Design
+
+PlainSQL changes two things in the SQL text. It puts a placeholder where a value goes. It puts delimiters around an Identifier. Both changes need no knowledge of what the SQL says.
+
+Every feature below needs that knowledge. It needs PlainSQL to read the SQL text or to encode a value. The developer owns the text. The Driver owns the encoding. A library that takes part of either job covers the cases its author foresaw. It fails on the rest. PlainSQL takes part of neither job.
+
+- **No SQL parsing.** A parser is one grammar per Dialect. Every construct outside the grammar is a bug report.
+- **No query builder.** There is no `INSERT` from a map, no `limit/1`, no `ORDER BY` from a keyword list. A builder is a second language over SQL. It grows one function per SQL construct. The rule for a helper is fixed. A helper is a SQL keyword.
+- **No transpiling between Dialects.** `LIMIT` stays `LIMIT` on MSSQL. `RETURNING` stays `RETURNING` on MySQL. A Dialect that rewrites text must read text. That is parsing.
+- **No value conversion.** A `%Date{}` reaches the Driver as a `%Date{}`. The Driver encodes it for its wire protocol. A second encoder disagrees with the Driver on some type.
+- **No execution and no Dialect inference.** Inference needs a table from connection module to Dialect and Driver. The table is closed. A Driver outside it needs a PlainSQL release. A Driver with a param shape of its own needs a row of code. The application module in [Execution](#execution) holds both facts for the Drivers it uses.
+- **No default meaning for an empty list.** `IN ()` is invalid SQL. "No filter" and "no row" are both valid meanings. A default hides a bug in the other case.
 
 ## Portability
 

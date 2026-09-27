@@ -35,11 +35,8 @@ defmodule PlainSQL.MixProject do
 
   defp deps do
     [
-      {:db_connection, "~> 2.10", optional: true},
-      {:ecto_sql, "~> 3.14", optional: true},
       {:postgrex, "~> 0.22", only: :test},
       {:exqlite, "~> 0.41", only: :test},
-      {:ecto_sqlite3, "~> 0.25", only: :test},
       {:excoveralls, "~> 0.18", only: :test},
       {:dialyxir, "~> 1.4", only: :test, runtime: false}
     ]

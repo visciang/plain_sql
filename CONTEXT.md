@@ -39,11 +39,3 @@ _Avoid_: Adapter, connection, repo
 **Rendering**:
 The act of turning a Fragment into the SQL string and the ordered value list that a Driver accepts, for one Dialect.
 _Avoid_: Compilation, serialisation, to_sql
-
-**Connection**:
-A `DBConnection.conn()` value that names a live Driver pool: a pool pid, a registered name, a `{:via, _, _}` tuple, or the handle inside `DBConnection.run/3`. PlainSQL infers the Dialect from it.
-_Avoid_: Conn, database handle, socket
-
-**Repo**:
-An Ecto repo module. An atom that exports `__adapter__/0` is a Repo. A Repo pid is not a Repo.
-_Avoid_: Repository, Ecto adapter, data store

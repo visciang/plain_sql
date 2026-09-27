@@ -21,5 +21,5 @@ db-down:
 check-no-deps:
 	rm -rf /tmp/plain_sql_no_deps && mkdir -p /tmp/plain_sql_no_deps
 	cp -R lib /tmp/plain_sql_no_deps/
-	sed -e '/{:db_connection/,/{:ecto_sqlite3/d' mix.exs > /tmp/plain_sql_no_deps/mix.exs
+	sed -e '/{:postgrex/,/{:exqlite/d' mix.exs > /tmp/plain_sql_no_deps/mix.exs
 	cd /tmp/plain_sql_no_deps && mix compile --warnings-as-errors

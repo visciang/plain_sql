@@ -218,7 +218,6 @@ Every error PlainSQL raises is an `ArgumentError`. Message text is not fixed by 
 | Helper argument or member that is not a Fragment, `nil`, or `false` | call |
 | List helper `fragments` argument that is not a list | call |
 | Identifier name contains a delimiter of the Dialect | `render/2` |
-| `dialect/1` cannot infer a Dialect | `dialect/1`, `query/3` |
 
 ## 3. Dialect contract
 
@@ -262,7 +261,7 @@ defmodule PlainSQL.Dialect.MSSQL do
 end
 ```
 
-A Dialect outside the shipped four is reachable through `render/2` only. `dialect/1` and `query/3` do not infer it.
+A Dialect outside the shipped four is reachable through `render/2`, like the shipped four.
 
 ## 4. Compile-time checks
 
@@ -281,59 +280,26 @@ No other check:
 
 Documentation requirement: the README documents the `'#{name}'` mistake. A `#{}` inside a quoted literal renders a placeholder inside the quotes. The database receives a string literal, not a Binding.
 
-## 5. Execution seam
+## 5. Execution
 
-`PlainSQL` ships `dialect/1` and `query/3` in the core package. There is no `query!/3`, no `stream`, no `prepare`, and no result mapping.
+PlainSQL is render-only. `render/2` is the last PlainSQL call. The application passes the rendered pair to the Driver function. There is no `query/3`, no `dialect/1`, no Dialect inference, and no result mapping.
 
-```elixir
-@spec dialect(conn_or_repo :: DBConnection.conn() | module()) :: module()
-@spec query(conn_or_repo :: DBConnection.conn() | module(), PlainSQL.Fragment.t(), opts :: keyword()) :: term()
-```
+Decision 2026-09-27. The first implementation shipped `dialect/1` and `query/3` (spec-ticket 07). They were removed for three reasons:
 
-### 5.1 `dialect/1`
+1. The inference table mapped connection modules and Ecto adapters to Dialects and Driver modules. The table was closed. A Driver outside it needed a PlainSQL release.
+2. `query/3` held one Driver-specific clause (the `Tds.Parameter` wrapping). That clause encoded values for a Driver. The Driver owns the encoding.
+3. The seam cost two optional deps (`db_connection`, `ecto_sql`) and `apply/3` indirection to compile without them. It saved one line per call.
 
-Returns one of the four shipped Dialect modules for a live connection or an Ecto repo module. It is public. A caller uses it to reach Driver functions that `query/3` does not cover.
+The README documents the replacement: one application module that fixes the Dialect and the Driver in a `query/3` of its own.
 
-Dispatch rule: an atom that exports `__adapter__/0` is a repo. Every other value is a `DBConnection.conn()`: a pool pid, a registered name, a `{:via, _, _}` tuple, or the `%DBConnection{}` handle inside `run/3` and `transaction/3`. A repo pid is not accepted on the repo path.
+### 5.1 Packaging
 
-Inference table. PlainSQL owns it. It is closed.
-
-| Source | Call | Result | Dialect | Driver module |
-|---|---|---|---|---|
-| `DBConnection.conn()` | `DBConnection.connection_module/1` | `Postgrex.Protocol` | `PlainSQL.Dialect.Postgres` | `Postgrex` |
-| | | `Exqlite.Connection` | `PlainSQL.Dialect.SQLite` | `Exqlite` |
-| | | `MyXQL.Connection` | `PlainSQL.Dialect.MySQL` | `MyXQL` |
-| | | `Tds.Protocol` | `PlainSQL.Dialect.MSSQL` | `Tds` |
-| repo module | `repo.__adapter__/0` | `Ecto.Adapters.Postgres` | `PlainSQL.Dialect.Postgres` | the repo |
-| | | `Ecto.Adapters.SQLite3` | `PlainSQL.Dialect.SQLite` | the repo |
-| | | `Ecto.Adapters.MyXQL` | `PlainSQL.Dialect.MySQL` | the repo |
-| | | `Ecto.Adapters.Tds` | `PlainSQL.Dialect.MSSQL` | the repo |
-
-Failure: `dialect/1` raises `ArgumentError` when `DBConnection.connection_module/1` returns `:error` or returns a module with no table row. The message names the value. There is no override option.
-
-### 5.2 `query/3`
-
-`query(conn_or_repo, fragment, opts \\ [])`:
-
-1. `dialect = dialect(conn_or_repo)`. This raises before Rendering on inference failure.
-2. `{sql, params} = render(fragment, dialect)`.
-3. Connection path: `Driver.query(conn, sql, params, opts)` with the Driver module from the table row.
-4. Repo path: `repo.query(sql, params, opts)`, the function `use Ecto.Adapters.SQL` injects. It honours `put_dynamic_repo/1`.
-
-The return value is the Driver result untouched. `opts` reaches the Driver unchanged. PlainSQL reads no key from `opts`.
-
-The Empty Fragment reaches the Driver as an empty statement. PlainSQL does not check it.
-
-Tds param shape: the Tds row wraps each rendered param as `struct(Tds.Parameter, name: "@#{n}", value: v)` in list order before the `Tds.query/4` call. This is the one Driver-specific clause in `query/3`.
-
-### 5.3 Packaging
-
-One package. `db_connection` and `ecto_sql` are `optional: true` deps. Driver modules appear as atoms in the table. Compilation without the optional deps present must be warning-free. The mechanism (`Code.ensure_loaded?/1` guard or `apply/3`) is the implementer's choice.
+One package. `lib/` has no dependency. `make check-no-deps` verifies it. Drivers appear only in the test deps and the README.
 
 ## 6. Out of scope
 
 - Connection pooling and wire protocols. Drivers own them.
-- Transactions and streaming. Drivers and Ecto own them.
+- Execution, transactions, and streaming. Drivers and Ecto own them. Section 5 records the removal of `query/3` and `dialect/1`.
 - Result-row mapping to structs. Every Driver has a different result shape.
 - Compile-time schema validation (`sql.lock` style).
 - `mix format` plugin for SQL text.
@@ -363,5 +329,5 @@ These items are not fixed by this spec. The implementation effort decides them.
 | `PlainSQL.join/2`, `identifier/1`, `raw/1` | [09](../.scratch/plain_sql-spec/issues/09-identifier-and-raw.md) |
 | `PlainSQL.render/2` | [05](../.scratch/plain_sql-spec/issues/05-dialect-contract.md) |
 | `PlainSQL.Dialect` behaviour and the four modules | [04](../.scratch/plain_sql-spec/issues/04-portability-statement.md), [05](../.scratch/plain_sql-spec/issues/05-dialect-contract.md) |
-| `PlainSQL.dialect/1`, `query/3` | [06](../.scratch/plain_sql-spec/issues/06-dialect-inference.md), [07](../.scratch/plain_sql-spec/issues/07-execution-seam.md) |
 | Portability statement | [04](../.scratch/plain_sql-spec/issues/04-portability-statement.md) |
+| Removal of `dialect/1` and `query/3` | [06](../.scratch/plain_sql-spec/issues/06-dialect-inference.md), [07](../.scratch/plain_sql-spec/issues/07-execution-seam.md), section 5 |
