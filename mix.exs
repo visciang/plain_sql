@@ -10,13 +10,37 @@ defmodule PlainSQL.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
-      test_coverage: [tool: ExCoveralls]
+      test_coverage: [tool: ExCoveralls],
+      name: "PlainSQL",
+      docs: docs()
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: ["README.md", "CONTEXT.md"],
+      groups_for_modules: [
+        Dialects: [
+          PlainSQL.Dialect,
+          PlainSQL.Dialect.Postgres,
+          PlainSQL.Dialect.SQLite,
+          PlainSQL.Dialect.MySQL,
+          PlainSQL.Dialect.MSSQL
+        ]
+      ]
     ]
   end
 
   defp aliases do
     [
-      all: ["compile --warnings-as-errors", "format --check-formatted", "dialyzer", "coveralls"]
+      all: [
+        "compile --warnings-as-errors",
+        "format --check-formatted",
+        "dialyzer",
+        "docs",
+        "coveralls"
+      ]
     ]
   end
 
@@ -38,7 +62,8 @@ defmodule PlainSQL.MixProject do
       {:postgrex, "~> 0.22", only: :test},
       {:exqlite, "~> 0.41", only: :test},
       {:excoveralls, "~> 0.18", only: :test},
-      {:dialyxir, "~> 1.4", only: :test, runtime: false}
+      {:dialyxir, "~> 1.4", only: :test, runtime: false},
+      {:ex_doc, "~> 0.34", only: [:dev, :test], runtime: false}
     ]
   end
 end
