@@ -1,6 +1,6 @@
 # PlainSQL design spec
 
-Status: ready for implementation. Assembled 2026-09-26 from the resolved tickets of `.scratch/plain_sql-spec/`. Terms follow `/CONTEXT.md`.
+Status: ready for implementation. Assembled 2026-09-26 from the resolved tickets of `.scratch/plain_sql-spec/`. Terms follow `/GLOSSARY.md`.
 
 ## 1. Purpose and portability
 

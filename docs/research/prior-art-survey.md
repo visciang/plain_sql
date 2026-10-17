@@ -4,7 +4,7 @@ Ticket: `.scratch/plain_sql-spec/issues/01-prior-art-survey.md`.
 Date of survey: 2026-09-26.
 Sources: source code and official docs. Each claim cites its source. Remote sources are the `main` or `master` branch on the survey date. The elixir-dbvisor/sql clone is at `/Volumes/Code/personal/sql`, commit `f6097fff5b08efe9cd946a01cc2152c82d871cf7` (2026-09-20), version `0.6.0-dev`.
 
-Terms follow `CONTEXT.md`: Fragment, Binding, Splicing, Dialect, Driver, Rendering. Library-specific names appear in backticks.
+Terms follow `GLOSSARY.md`: Fragment, Binding, Splicing, Dialect, Driver, Rendering. Library-specific names appear in backticks.
 
 Each library section lists the six items of the ticket:
 

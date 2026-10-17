@@ -4,7 +4,7 @@ Ticket: `.scratch/plain_sql-spec/issues/06-dialect-inference.md`.
 Date: 2026-09-26.
 Sources: library source code and hexdocs. Each claim cites its source. Remote sources are the `master` or `main` branch on the date above, except where a tag is named. `db_connection` 2.10.2 and `exqlite` 0.41.0 were read from local Hex copies and cited at their GitHub tags.
 
-Terms follow `CONTEXT.md`: Dialect, Driver, Rendering. Library-specific names appear in backticks. `Ecto.Adapters.Postgres` and similar names are Ecto module names, not PlainSQL terms.
+Terms follow `GLOSSARY.md`: Dialect, Driver, Rendering. Library-specific names appear in backticks. `Ecto.Adapters.Postgres` and similar names are Ecto module names, not PlainSQL terms.
 
 Question: a caller holds a live connection pid, a `DBConnection` handle, or an Ecto repo module. Can the caller discover the Driver, and so the Dialect, without configuration?
 
