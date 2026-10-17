@@ -1,0 +1,202 @@
+# Cheatsheet
+
+Every example runs after `import PlainSQL` and `alias PlainSQL.Dialect.Postgres`. A `#=>` line shows the value of the expression above it. The [README](../README.md) gives the rules and the warnings.
+
+## Rendering
+
+### `render/2`
+
+```elixir
+query = ~q"SELECT * FROM orders WHERE id = #{7}"
+
+render(query, Postgres)
+#=> {"SELECT * FROM orders WHERE id = $1", [7]}
+render(query, PlainSQL.Dialect.SQLite)
+#=> {"SELECT * FROM orders WHERE id = ?", [7]}
+render(query, PlainSQL.Dialect.MySQL)
+#=> {"SELECT * FROM orders WHERE id = ?", [7]}
+render(query, PlainSQL.Dialect.MSSQL)
+#=> {"SELECT * FROM orders WHERE id = @1", [7]}
+```
+
+## Fragments
+{: .col-2}
+
+### `~q`
+
+```elixir
+render(~q"SELECT * FROM orders WHERE status = #{"open"}", Postgres)
+#=> {"SELECT * FROM orders WHERE status = $1", ["open"]}
+
+cond_ = ~q"status = #{"open"}"
+render(~q"SELECT * FROM orders WHERE #{cond_} AND total > #{10}", Postgres)
+#=> {"SELECT * FROM orders WHERE status = $1 AND total > $2", ["open", 10]}
+```
+
+### `identifier/1`
+
+```elixir
+render(~q"#{identifier("public")}.#{identifier("orders")}", PlainSQL.Dialect.MySQL)
+#=> {"`public`.`orders`", []}
+```
+
+### `raw/1`
+
+```elixir
+render(raw("ORDER BY id"), Postgres)
+#=> {"ORDER BY id", []}
+render(raw(""), Postgres)
+#=> {"", []}
+```
+
+### `list/1`
+
+```elixir
+render(list([1, 2, 3]), Postgres)
+#=> {"($1, $2, $3)", [1, 2, 3]}
+```
+
+### `values/1`
+
+```elixir
+render(values([[1, "open"], [2, "closed"]]), Postgres)
+#=> {"VALUES ($1, $2), ($3, $4)", [1, "open", 2, "closed"]}
+```
+
+## Composition
+{: .col-2}
+
+### `join/2`
+
+```elixir
+render(join([~q"id", nil, ~q"status"], ~q", "), Postgres)
+#=> {"id, status", []}
+```
+
+### `and_/1`
+
+```elixir
+render(and_([~q"status = #{"open"}", nil, ~q"total > #{10}"]), Postgres)
+#=> {"(status = $1) AND (total > $2)", ["open", 10]}
+render(and_([nil, false]), Postgres)
+#=> {"", []}
+```
+
+### `or_/1`
+
+```elixir
+render(or_([~q"status = #{"open"}", false, ~q"status = #{"held"}"]), Postgres)
+#=> {"(status = $1) OR (status = $2)", ["open", "held"]}
+```
+
+### `where/1`
+
+```elixir
+render(where(~q"id = #{7}"), Postgres)
+#=> {"WHERE id = $1", [7]}
+render(where(nil), Postgres)
+#=> {"", []}
+```
+
+### `having/1`
+
+```elixir
+render(having(~q"count(*) > #{2}"), Postgres)
+#=> {"HAVING count(*) > $1", [2]}
+```
+
+### `group_by/1`
+
+```elixir
+render(group_by([~q"status", nil]), Postgres)
+#=> {"GROUP BY status", []}
+```
+
+### `order_by/1`
+
+```elixir
+render(order_by([~q"status", false, ~q"total DESC"]), Postgres)
+#=> {"ORDER BY status, total DESC", []}
+```
+
+### `set/1`
+
+```elixir
+render(set([~q"status = #{"open"}", nil]), Postgres)
+#=> {"SET status = $1", ["open"]}
+```
+
+### `empty?/1`
+
+```elixir
+empty?(and_([nil, false]))
+#=> true
+empty?(~q"id = #{7}")
+#=> false
+```
+
+## Idioms
+{: .col-2}
+
+### Optional filters
+
+```elixir
+status = "open"
+ids = []
+
+by_id = ids != [] && ~q"id IN #{list(ids)}"
+conds = and_([~q"status = #{status}", by_id])
+render(~q"SELECT * FROM orders #{where(conds)}", Postgres)
+#=> {"SELECT * FROM orders WHERE (status = $1)", ["open"]}
+```
+
+### `IN`
+
+```elixir
+ids = [1, 2]
+
+render(~q"SELECT * FROM orders WHERE id IN #{list(ids)}", Postgres)
+#=> {"SELECT * FROM orders WHERE id IN ($1, $2)", [1, 2]}
+```
+
+### Postgres array with `ANY`
+
+```elixir
+ids = [1, 2]
+
+render(~q"SELECT * FROM orders WHERE id = ANY(#{ids})", Postgres)
+#=> {"SELECT * FROM orders WHERE id = ANY($1)", [[1, 2]]}
+```
+
+### `UPDATE`
+
+```elixir
+status = "open"
+note = nil
+
+assignments = set([~q"status = #{status}", note && ~q"note = #{note}"])
+render(~q"UPDATE orders #{assignments} WHERE id = #{7}", Postgres)
+#=> {"UPDATE orders SET status = $1 WHERE id = $2", ["open", 7]}
+```
+
+### `INSERT`
+
+```elixir
+table = "orders"
+columns = ["id", "status"]
+rows = [[1, "open"], [2, "closed"]]
+
+cols = join(Enum.map(columns, &identifier/1), ~q", ")
+render(~q"INSERT INTO #{identifier(table)} (#{cols}) #{values(rows)}", PlainSQL.Dialect.MySQL)
+#=> {"INSERT INTO `orders` (`id`, `status`) VALUES (?, ?), (?, ?)", [1, "open", 2, "closed"]}
+```
+
+### `DELETE` guard
+
+```elixir
+conds = and_([~q"id = #{7}"])
+
+if empty?(conds), do: raise(ArgumentError, "DELETE needs a predicate")
+render(~q"DELETE FROM orders #{where(conds)}", Postgres)
+#=> {"DELETE FROM orders WHERE (id = $1)", [7]}
+```

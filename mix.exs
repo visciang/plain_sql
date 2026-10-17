@@ -19,7 +19,7 @@ defmodule PlainSQL.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "CONTEXT.md"],
+      extras: ["README.md", "docs/cheatsheet.cheatmd", "CONTEXT.md"],
       groups_for_modules: [
         Dialects: [
           PlainSQL.Dialect,
