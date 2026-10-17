@@ -156,6 +156,15 @@ No negation helper. The developer writes `~q"NOT (#{pred})"`.
 - A bare list in `#{}` stays one `{:binding, list}` part. The Driver receives one value. The developer writes `id = ANY(#{ids})` for the Postgres array form.
 - PlainSQL does not count parameters. The Driver reports its parameter limit.
 
+`values(rows)`
+
+- Takes a list of rows. A row is a list of values.
+- Renders `VALUES ` followed by one `{:list, row}` part per row. The separator between two rows is `, `.
+- Raises `ArgumentError` at the call for an empty list. `INSERT` without rows is invalid SQL on every Dialect.
+- Raises `ArgumentError` at the call for a `rows` argument that is not a list and for a row that is not a non-empty list.
+- PlainSQL does not compare the row lengths. The database reports a row length that does not match.
+- Takes rows, not a map. Section 6 keeps the `INSERT` builder from a map out of scope.
+
 `identifier(name)`
 
 - Takes a binary. Raises `ArgumentError` at the call for any other value and for `""`.
@@ -180,8 +189,7 @@ conds = and_([~q"status = #{status}", ids != [] && ~q"id IN #{list(ids)}"])
 cols = join(Enum.map(names, &identifier/1), ~q", ")
 ~q"INSERT INTO #{identifier(table)} (#{cols}) VALUES #{list(values)}"
 
-rows = join(Enum.map(values_per_row, &list/1), ~q", ")
-~q"INSERT INTO t (a, b) VALUES #{rows}"
+~q"INSERT INTO t (a, b) #{values(rows)}"
 
 order = order_by([~q"created_at DESC", by_name && ~q"name"])
 ~q"SELECT * FROM orders #{where(ids != [] && ~q"id IN #{list(ids)}")} #{order}"
@@ -223,6 +231,7 @@ Every error PlainSQL raises is an `ArgumentError`. Message text is not fixed by 
 | Empty `#{}` in `~q` | compile time |
 | `or_/1` or `set/1` with no remaining member | call |
 | `list/1` with an empty list | call |
+| `values/1` with an empty list, a non-list, or a row that is not a non-empty list | call |
 | `identifier/1` with a non-binary or `""` | call |
 | `raw/1` with a non-binary | call |
 | Helper argument or member that is not a Fragment, `nil`, or `false` | call |
@@ -337,6 +346,7 @@ These items are not fixed by this spec. The implementation effort decides them.
 | `PlainSQL.and_/1`, `or_/1`, `where/1`, `list/1` | [02](../.scratch/plain_sql-spec/issues/02-composition-model.md) |
 | `PlainSQL.empty?/1`, `having/1`, `group_by/1`, `order_by/1`, `set/1`, skip rule on unary helpers | grilling 2026-09-26, [implementation ticket 08](../.scratch/plain_sql-implementation/issues/08-compose-optional-clauses.md) |
 | `PlainSQL.join/2`, `identifier/1`, `raw/1` | [09](../.scratch/plain_sql-spec/issues/09-identifier-and-raw.md) |
+| `PlainSQL.values/1` | [usability 02](../.scratch/plain_sql-usability/issues/02-render-multi-row-values.md) |
 | `PlainSQL.render/2` | [05](../.scratch/plain_sql-spec/issues/05-dialect-contract.md) |
 | `PlainSQL.Dialect` behaviour and the four modules | [04](../.scratch/plain_sql-spec/issues/04-portability-statement.md), [05](../.scratch/plain_sql-spec/issues/05-dialect-contract.md) |
 | Portability statement | [04](../.scratch/plain_sql-spec/issues/04-portability-statement.md) |

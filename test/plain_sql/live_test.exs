@@ -20,6 +20,14 @@ defmodule PlainSQL.LiveTest do
       assert {:ok, %Exqlite.Result{rows: [[2, "b"], [3, "c"]]}} = Exqlite.query(conn, sql, params)
     end
 
+    test "values/1 inserts one row per group", %{conn: conn} do
+      {sql, params} = render(~q"INSERT INTO t (id, name) #{values([[4, "d"], [5, "e"]])}", SQLite)
+      assert {:ok, _} = Exqlite.query(conn, sql, params)
+
+      assert {:ok, %Exqlite.Result{rows: [[4, "d"], [5, "e"]]}} =
+               Exqlite.query(conn, "SELECT id, name FROM t WHERE id > 3 ORDER BY id", [])
+    end
+
     test "the UPDATE and the clause idioms", %{conn: conn} do
       assignments = set([~q"name = #{"z"}", nil])
       {sql, params} = render(~q"UPDATE t #{assignments} WHERE id = #{1}", SQLite)

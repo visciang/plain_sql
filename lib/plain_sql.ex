@@ -101,6 +101,35 @@ defmodule PlainSQL do
   end
 
   @doc """
+  Renders `VALUES ` followed by one placeholder group per row of `rows`.
+
+  A row is a list of values. Rendering emits `(p1, ..., pn)` for each row. A `, `
+  separates two groups.
+
+  PlainSQL does not compare the row lengths. The database reports a row length that
+  does not match the column list.
+
+  Raises `ArgumentError` for an empty list. `INSERT` without rows is invalid SQL on every
+  Dialect. Raises `ArgumentError` for a `rows` that is not a list and for a row that is not
+  a non-empty list.
+  """
+  @spec values([[term(), ...], ...]) :: Fragment.t()
+  def values([_ | _] = rows) do
+    groups = rows |> Enum.map(&row/1) |> Enum.intersperse({:text, ", "})
+    %Fragment{parts: [{:text, "VALUES "} | groups]}
+  end
+
+  def values(other) do
+    raise ArgumentError, "values/1 expects a non-empty list of rows, got: #{inspect(other)}"
+  end
+
+  defp row([_ | _] = values), do: {:list, values}
+
+  defp row(other) do
+    raise ArgumentError, "values/1 expects a row to be a non-empty list, got: #{inspect(other)}"
+  end
+
+  @doc """
   Joins `fragments` with `separator` between them.
 
   Skips members that are `nil`, `false`, or the Empty Fragment. Renders the Empty

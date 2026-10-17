@@ -132,12 +132,38 @@ defmodule PlainSQL.HelpersTest do
     test "renders a VALUES row with parentheses included" do
       assert render(~q"VALUES #{list(["a", "b"])}", Postgres) == {"VALUES ($1, $2)", ["a", "b"]}
     end
+  end
 
-    test "the multi-row VALUES idiom is join/2 over one list/1 per row" do
-      rows = [[1, "open"], [2, "closed"]]
-      fragment = ~q"VALUES #{join(Enum.map(rows, &list/1), ~q", ")}"
+  describe "values/1" do
+    test "renders VALUES with one placeholder group per row on every Dialect" do
+      fragment = ~q"INSERT INTO t (a, b) #{values([[1, "x"], [2, "y"]])}"
+      params = [1, "x", 2, "y"]
 
-      assert render(fragment, Postgres) == {"VALUES ($1, $2), ($3, $4)", [1, "open", 2, "closed"]}
+      assert render(fragment, Postgres) ==
+               {"INSERT INTO t (a, b) VALUES ($1, $2), ($3, $4)", params}
+
+      assert render(fragment, SQLite) == {"INSERT INTO t (a, b) VALUES (?, ?), (?, ?)", params}
+      assert render(fragment, MySQL) == {"INSERT INTO t (a, b) VALUES (?, ?), (?, ?)", params}
+      assert render(fragment, MSSQL) == {"INSERT INTO t (a, b) VALUES (@1, @2), (@3, @4)", params}
+    end
+
+    test "renders one row without a separator" do
+      assert render(values([[1]]), Postgres) == {"VALUES ($1)", [1]}
+    end
+
+    test "raises ArgumentError for no rows" do
+      assert_raise ArgumentError, fn -> values([]) end
+    end
+
+    test "raises ArgumentError for rows that are not a list" do
+      assert_raise ArgumentError, fn -> values(%{a: 1}) end
+      assert_raise ArgumentError, fn -> values(nil) end
+    end
+
+    test "raises ArgumentError for a row that is not a non-empty list" do
+      assert_raise ArgumentError, fn -> values([[1], []]) end
+      assert_raise ArgumentError, fn -> values([[1], 2]) end
+      assert_raise ArgumentError, fn -> values([~q"(1)"]) end
     end
   end
 

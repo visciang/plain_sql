@@ -185,12 +185,14 @@ render(~q"INSERT INTO #{identifier(table)} (#{cols}) VALUES #{list(values)}", Pl
 
 `identifier/1` always quotes. On Postgres `identifier("Users")` renders `"Users"`. That names a different table from unquoted `Users`. Postgres folds an unquoted identifier to lower case, so unquoted `Users` is the table `users`.
 
-`join/2` skips absent members, like the other list helpers. A multi-row `VALUES` is `join/2` over one `list/1` per row:
+`join/2` skips absent members, like the other list helpers.
+
+`values/1` renders a multi-row `VALUES`. It takes a list of rows. Each row is a list of values.
 
 ```elixir
 rows = [[1, "open"], [2, "closed"]]
 
-render(~q"INSERT INTO orders (id, status) VALUES #{join(Enum.map(rows, &list/1), ~q", ")}", PlainSQL.Dialect.Postgres)
+render(~q"INSERT INTO orders (id, status) #{values(rows)}", PlainSQL.Dialect.Postgres)
 #=> {"INSERT INTO orders (id, status) VALUES ($1, $2), ($3, $4)", [1, "open", 2, "closed"]}
 ```
 
