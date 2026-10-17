@@ -29,7 +29,7 @@ The developer writes `import PlainSQL`. Every public function lives in `PlainSQL
 
 ### 2.1 Fragment
 
-`PlainSQL.Fragment` holds the struct and the part type only. It has no functions.
+`PlainSQL.Fragment` holds the struct, the part type, and the `Inspect` implementation. It has no functions.
 
 ```elixir
 defmodule PlainSQL.Fragment do
@@ -49,6 +49,16 @@ end
 - A Fragment stores no placeholder numbers. Rendering assigns placeholders in part order.
 - A Fragment holds no nested Fragment. Splicing flattens the inner parts into the outer list.
 - The Empty Fragment is `%PlainSQL.Fragment{parts: []}`. `~q""` and `raw("")` produce it. There is no `empty/0` function.
+
+Inspect form: `#PlainSQL.Fragment<"SELECT * FROM orders WHERE status = ?", ["open"]>`.
+
+- The form shows the SQL text and the values in text order.
+- A Binding shows as `?`.
+- A list part shows as `(?, ?, ...)`, with one `?` for each element.
+- An Identifier shows inside double quotes. Double quotes are the delimiter pair of the SQL standard.
+- The text never contains a value.
+- The caller's inspect options apply to the values. The text shows in full.
+- Inspecting is not Rendering. The inspect form uses no Dialect.
 
 ### 2.2 Sigil `~q`
 
