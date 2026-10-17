@@ -9,6 +9,7 @@ defmodule PlainSQL.HelpersTest do
   alias PlainSQL.Dialect.SQLite
 
   @empty %PlainSQL.Fragment{parts: []}
+  @hint ~r/~q.*raw\/1/
 
   describe "identifier/1" do
     test "renders the name inside the delimiter pair of each Dialect" do
@@ -190,6 +191,16 @@ defmodule PlainSQL.HelpersTest do
       assert_raise ArgumentError, fn -> and_([~q"a", "b"]) end
     end
 
+    test "hints at ~q and raw/1 for a string member and a string argument" do
+      member_error = assert_raise ArgumentError, fn -> and_(["status = 'open'"]) end
+
+      list_error =
+        assert_raise ArgumentError, fn -> apply(PlainSQL, :and_, ["status = 'open'"]) end
+
+      assert member_error.message =~ @hint
+      assert list_error.message =~ @hint
+    end
+
     test "raises ArgumentError for a fragments argument that is not a list" do
       assert_raise ArgumentError, fn -> apply(PlainSQL, :and_, [~q"a"]) end
     end
@@ -247,6 +258,16 @@ defmodule PlainSQL.HelpersTest do
       # apply/3 hides the argument from the compile-time type check.
       assert_raise ArgumentError, fn -> apply(PlainSQL, :where, [1]) end
       assert_raise ArgumentError, fn -> apply(PlainSQL, :where, ["a = 1"]) end
+    end
+
+    test "hints at ~q and raw/1 for a string and not for another value" do
+      string_error =
+        assert_raise ArgumentError, fn -> apply(PlainSQL, :where, ["status = 'open'"]) end
+
+      other_error = assert_raise ArgumentError, fn -> apply(PlainSQL, :where, [1]) end
+
+      assert string_error.message =~ @hint
+      refute other_error.message =~ @hint
     end
 
     test "the conds idiom renders with and without the WHERE clause" do

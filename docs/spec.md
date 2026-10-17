@@ -223,7 +223,9 @@ Part rendering:
 
 ### 2.6 Errors
 
-Every error PlainSQL raises is an `ArgumentError`. Message text is not fixed by this spec.
+Every error PlainSQL raises is an `ArgumentError`. This spec fixes the content of a message, not its text.
+
+For a string in place of a Fragment or a list of Fragments, the message tells the developer to use `~q` for SQL text or `raw/1` for runtime SQL text. Any other wrong value gets no hint.
 
 | Case | When |
 |---|---|
@@ -334,7 +336,6 @@ One package. `lib/` has no dependency. Drivers appear only in the test deps and 
 
 These items are not fixed by this spec. The implementation effort decides them.
 
-- The message text of each `ArgumentError` in section 2.6.
 - The test strategy for Rendering per Dialect.
 
 ## Appendix: traceability

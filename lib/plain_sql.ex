@@ -152,13 +152,14 @@ defmodule PlainSQL do
   end
 
   def join(_fragments, separator) do
-    raise ArgumentError, "join/2 expects a Fragment separator, got: #{inspect(separator)}"
+    raise ArgumentError,
+          "join/2 expects a Fragment separator, got: #{inspect(separator)}#{hint(separator)}"
   end
 
   defp members(fragments) when is_list(fragments), do: fragments
 
   defp members(other) do
-    raise ArgumentError, "expected a list of Fragments, got: #{inspect(other)}"
+    raise ArgumentError, "expected a list of Fragments, got: #{inspect(other)}#{hint(other)}"
   end
 
   defp member_parts(nil), do: []
@@ -167,8 +168,15 @@ defmodule PlainSQL do
   defp member_parts(%Fragment{parts: parts}), do: [parts]
 
   defp member_parts(other) do
-    raise ArgumentError, "expected a Fragment, nil, or false, got: #{inspect(other)}"
+    raise ArgumentError,
+          "expected a Fragment, nil, or false, got: #{inspect(other)}#{hint(other)}"
   end
+
+  defp hint(value) when is_binary(value) do
+    ". Use ~q for SQL text or raw/1 for runtime SQL text"
+  end
+
+  defp hint(_value), do: ""
 
   @doc """
   Joins the predicates in `fragments` with ` AND `.
