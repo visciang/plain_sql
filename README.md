@@ -2,7 +2,7 @@
 
 An Elixir library for writing SQL as SQL.
 
-The developer writes the SQL text and puts each value in `#{}`.
+The developer writes the SQL text and puts each value in `#{}`. The resulting SQL query strings are composable: you can build larger queries from smaller fragments and combine them without parsing SQL, while keeping each value safely separated from the final SQL text.
 
 PlainSQL keeps the values out of the text, renders one placeholder per value in the style of the target database, and returns the SQL string with the ordered value list.
 
